@@ -1,0 +1,38 @@
+spring:
+  config:
+    import: 'optional:file:.env[.properties]'
+  application: { name: events-api }
+  profiles: { default: dev }
+  datasource:
+    url: '${DB_URL:jdbc:postgresql://aws-0-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require}'
+    username: '${DB_USERNAME:postgres.acmabisrjdocykrwfxuz}'
+    password: '${DB_PASSWORD:bdhoyintegrador}'
+    driver-class-name: org.postgresql.Driver
+
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate: { ddl-auto: update }
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc: { time_zone: America/Bogota }
+  jackson:
+    time-zone: America/Bogota
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+  packages-to-scan: com.events.infrastructure.adapter.in.rest.controller
+  paths-to-match: /api/**
+
+management: { endpoints: { web: { exposure: { include: health,info } } } }
+app: { cors-origin: '${CORS_ORIGIN:http://localhost:4200}' }
+server: { port: '${PORT:8080}' }

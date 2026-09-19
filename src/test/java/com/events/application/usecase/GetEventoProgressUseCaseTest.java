@@ -1,0 +1,56 @@
+package com.events.application.usecase;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import com.events.application.port.in.EventoProgress;
+import com.events.application.port.out.EventoRepositoryPort;
+import com.events.application.port.out.SubtareaRepositoryPort;
+import com.events.domain.entity.Subtarea;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+
+class GetEventoProgressUseCaseTest {
+
+    private final EventoRepositoryPort eventoRepository = mock(EventoRepositoryPort.class);
+    private final SubtareaRepositoryPort subtareaRepository = mock(SubtareaRepositoryPort.class);
+    private final GetEventoProgressUseCase useCase = new GetEventoProgressUseCase(eventoRepository, subtareaRepository);
+
+    private Subtarea subtarea(boolean done) {
+        Subtarea subtarea = new Subtarea("Tarea", LocalDate.now(), BigDecimal.ONE);
+        if (done) {
+            subtarea.marcarHecha();
+        }
+        return subtarea;
+    }
+
+    @Test
+    void calculaPorcentajeConSubtareasMixtas() {
+        UUID eventoId = UUID.randomUUID();
+        when(eventoRepository.existsById(eventoId)).thenReturn(true);
+        when(subtareaRepository.findByEventoId(eventoId))
+                .thenReturn(List.of(subtarea(true), subtarea(true), subtarea(false), subtarea(false)));
+
+        EventoProgress progress = useCase.execute(eventoId);
+
+        assertThat(progress.done()).isEqualTo(2);
+        assertThat(progress.total()).isEqualTo(4);
+        assertThat(progress.percentage()).isEqualTo(50.0);
+    }
+
+    @Test
+    void devuelveCeroCuandoElEventoNoTieneSubtareas() {
+        UUID eventoId = UUID.randomUUID();
+        when(eventoRepository.existsById(eventoId)).thenReturn(true);
+        when(subtareaRepository.findByEventoId(eventoId)).thenReturn(List.of());
+
+        EventoProgress progress = useCase.execute(eventoId);
+
+        assertThat(progress.total()).isZero();
+        assertThat(progress.percentage()).isZero();
+    }
+}
