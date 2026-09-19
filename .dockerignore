@@ -1,0 +1,7 @@
+target
+.git
+docs
+*.md
+.env
+.env.example
+.jqwik-database
