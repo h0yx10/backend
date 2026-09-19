@@ -8,6 +8,12 @@ spring:
     username: '${DB_USERNAME:postgres.acmabisrjdocykrwfxuz}'
     password: '${DB_PASSWORD:bdhoyintegrador}'
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      idle-timeout: 30000
+      max-lifetime: 1500000
+      connection-timeout: 20000
 
 
   jpa:
