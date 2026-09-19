@@ -38,12 +38,16 @@ Copia `.env.example` a `.env` y completa los valores de tu base de datos. `.env`
 | Variable | Valor predeterminado | Descripcion |
 |---|---|---|
 | `SERVER_PORT` | `8080` | Puerto en el que se ejecuta la API. |
-| `CORS_ORIGIN` | `http://localhost:4200` | Origen autorizado para peticiones desde el frontend. |
+| `CORS_ORIGIN` | `http://localhost:4300,https://frontend-pi-olive-30.vercel.app` | Origenes autorizados, separados por comas, sin ruta ni barra final. |
 | `DB_URL` | *(localhost, no funcional)* | Cadena JDBC de conexion a Postgres/Supabase. |
 | `DB_USERNAME` | *(localhost, no funcional)* | Usuario de la base de datos. |
 | `DB_PASSWORD` | *(localhost, no funcional)* | Password de la base de datos. |
 
-Como Spring Boot no carga `.env` automaticamente, exporta las variables antes de ejecutar:
+Para el backend desplegado, configura `CORS_ORIGIN=https://frontend-pi-olive-30.vercel.app`
+y vuelve a desplegarlo. Esta variable reemplaza los origenes predeterminados, incluido
+cuando se carga desde `.env`.
+
+La aplicacion importa `.env` si existe. Tambien puedes exportar las variables antes de ejecutar:
 
 ```bash
 # bash

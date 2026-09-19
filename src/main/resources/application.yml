@@ -40,5 +40,5 @@ springdoc:
   paths-to-match: /api/**
 
 management: { endpoints: { web: { exposure: { include: health,info } } } }
-app: { cors-origin: '${CORS_ORIGIN:http://localhost:4300,https://*.vercel.app}' }
+app: { cors-origin: '${CORS_ORIGIN:http://localhost:4300,https://frontend-pi-olive-30.vercel.app}' }
 server: { port: '${PORT:8080}' }
