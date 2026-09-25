@@ -70,6 +70,15 @@ reutiliza en cada peticion; las tablas se crean/actualizan automaticamente
 
 ## Documentacion interactiva
 
+### Esquema existente: cliente opcional
+
+Si crear un evento devuelve `null value in column "cliente" ... violates not-null constraint`,
+ejecuta [este script SQL](docs/sql/2026-09-19_eventos_cliente_nullable.sql) en el SQL Editor
+de la base de datos Supabase usada por el backend. El contrato permite omitir `cliente`,
+pero una tabla existente puede conservar la restriccion `NOT NULL`.
+El script elimina esa restriccion sin cambiar los datos y consulta `is_nullable`, que debe
+mostrar `YES`. Luego vuelve a intentar crear el evento; este cambio no requiere redespliegue.
+
 Con la aplicacion en ejecucion:
 
 - Swagger UI: http://localhost:8080/swagger-ui.html
