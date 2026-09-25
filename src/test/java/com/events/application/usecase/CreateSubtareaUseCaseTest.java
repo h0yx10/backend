@@ -30,10 +30,11 @@ class CreateSubtareaUseCaseTest {
         when(eventoRepository.findById(eventoId)).thenReturn(Optional.of(evento));
         when(subtareaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var subtarea = useCase.execute(eventoId, "Enviar invitaciones", LocalDate.now().plusDays(1), BigDecimal.valueOf(3));
+        var subtarea = useCase.execute(eventoId, "Enviar invitaciones", LocalDate.now().plusDays(1), BigDecimal.valueOf(3), "Detalle de la tarea");
 
         assertThat(subtarea.getNombre()).isEqualTo("Enviar invitaciones");
         assertThat(subtarea.getEvento()).isSameAs(evento);
+        assertThat(subtarea.getDescripcion()).isEqualTo("Detalle de la tarea");
     }
 
     @Test
@@ -41,7 +42,7 @@ class CreateSubtareaUseCaseTest {
         UUID eventoId = UUID.randomUUID();
         when(eventoRepository.findById(eventoId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> useCase.execute(eventoId, "Tarea", LocalDate.now(), BigDecimal.ONE))
+        assertThatThrownBy(() -> useCase.execute(eventoId, "Tarea", LocalDate.now(), BigDecimal.ONE, null))
                 .isInstanceOf(EventoNotFoundException.class);
     }
 }

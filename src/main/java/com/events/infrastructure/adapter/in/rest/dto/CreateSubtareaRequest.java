@@ -1,5 +1,6 @@
 package com.events.infrastructure.adapter.in.rest.dto;
 
+import static com.events.infrastructure.utils.constants.MessageConstants.DESCRIPCION_MAX_LENGTH;
 import static com.events.infrastructure.utils.constants.MessageConstants.FECHA_OBJETIVO_REQUIRED;
 import static com.events.infrastructure.utils.constants.MessageConstants.HORAS_ESTIMADAS_POSITIVE;
 import static com.events.infrastructure.utils.constants.MessageConstants.HORAS_ESTIMADAS_REQUIRED;
@@ -9,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -25,6 +27,10 @@ public record CreateSubtareaRequest(
         @Schema(example = "4")
         @NotNull(message = HORAS_ESTIMADAS_REQUIRED)
         @DecimalMin(value = "0.0", inclusive = false, message = HORAS_ESTIMADAS_POSITIVE)
-        BigDecimal horasEstimadas
+        BigDecimal horasEstimadas,
+
+        @Schema(example = "Coordinar con el proveedor la entrega antes de las 10am")
+        @Size(max = 500, message = DESCRIPCION_MAX_LENGTH)
+        String descripcion
 ) {
 }

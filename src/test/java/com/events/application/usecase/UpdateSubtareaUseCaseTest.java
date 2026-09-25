@@ -43,7 +43,7 @@ class UpdateSubtareaUseCaseTest {
         when(subtareaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         LocalDate nuevaFecha = LocalDate.now().plusDays(2);
-        Subtarea actualizada = useCase.execute(null, null, nuevaFecha, BigDecimal.valueOf(2));
+        Subtarea actualizada = useCase.execute(null, null, nuevaFecha, BigDecimal.valueOf(2), null);
 
         assertThat(actualizada.getFechaObjetivo()).isEqualTo(nuevaFecha);
         verify(subtareaRepository).save(subtarea);
@@ -59,7 +59,7 @@ class UpdateSubtareaUseCaseTest {
         when(subtareaRepository.sumHorasPlanificadas(any(), any(), any())).thenReturn(BigDecimal.valueOf(5));
 
         LocalDate nuevaFecha = LocalDate.now().plusDays(1);
-        assertThatThrownBy(() -> useCase.execute(null, null, nuevaFecha, BigDecimal.valueOf(2)))
+        assertThatThrownBy(() -> useCase.execute(null, null, nuevaFecha, BigDecimal.valueOf(2), null))
                 .isInstanceOf(CapacityConflictException.class)
                 .satisfies(ex -> {
                     CapacityConflictException conflict = (CapacityConflictException) ex;
@@ -80,7 +80,7 @@ class UpdateSubtareaUseCaseTest {
         when(subtareaRepository.sumHorasPlanificadas(any(), any(), any())).thenReturn(BigDecimal.valueOf(4));
         when(subtareaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        useCase.execute(null, null, LocalDate.now().plusDays(1), BigDecimal.valueOf(2));
+        useCase.execute(null, null, LocalDate.now().plusDays(1), BigDecimal.valueOf(2), null);
 
         verify(subtareaRepository).save(subtarea);
     }
@@ -91,7 +91,7 @@ class UpdateSubtareaUseCaseTest {
         when(subtareaRepository.findById(any())).thenReturn(Optional.of(subtarea));
         when(subtareaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        useCase.execute(null, "Nuevo nombre", null, null);
+        useCase.execute(null, "Nuevo nombre", null, null, null);
 
         verify(capacidadDiariaRepository, never()).findCurrentByOrganizadorId(any());
         verify(subtareaRepository).save(subtarea);

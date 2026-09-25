@@ -10,5 +10,5 @@ import java.util.UUID;
  * (US-06), validando sobrecarga diaria (US-07) cuando la fecha o las horas cambian.
  */
 public interface UpdateSubtareaPort {
-    Subtarea execute(UUID subtareaId, String nombre, LocalDate fechaObjetivo, BigDecimal horasEstimadas);
+    Subtarea execute(UUID subtareaId, String nombre, LocalDate fechaObjetivo, BigDecimal horasEstimadas, String descripcion);
 }

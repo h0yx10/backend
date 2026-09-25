@@ -15,6 +15,7 @@ public record SubtareaResponse(
         EstadoSubtarea estado,
         String nota,
         LocalDateTime doneAt,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        String descripcion
 ) {
 }

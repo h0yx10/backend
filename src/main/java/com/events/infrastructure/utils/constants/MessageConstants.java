@@ -25,6 +25,7 @@ public final class MessageConstants {
 
     public static final String NOMBRE_REQUIRED = "Escribe un nombre.";
     public static final String NOMBRE_MAX_LENGTH = "El nombre puede tener maximo 180 caracteres.";
+    public static final String DESCRIPCION_MAX_LENGTH = "La descripcion puede tener maximo 500 caracteres.";
     public static final String TIPO_REQUIRED = "Selecciona un tipo de evento.";
     public static final String FECHA_HORA_REQUIRED = "Indica la fecha y hora del evento.";
     public static final String FECHA_OBJETIVO_REQUIRED = "Indica el plazo de la subtarea.";
