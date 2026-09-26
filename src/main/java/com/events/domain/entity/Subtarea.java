@@ -41,9 +41,6 @@ public class Subtarea {
     @Column(length = 1000)
     private String nota;
 
-    @Column(length = 500)
-    private String descripcion;
-
     @Column(name = "done_at")
     private LocalDateTime doneAt;
 
@@ -58,16 +55,11 @@ public class Subtarea {
     }
 
     public Subtarea(String nombre, LocalDate fechaObjetivo, BigDecimal horasEstimadas) {
-        this(nombre, fechaObjetivo, horasEstimadas, null);
-    }
-
-    public Subtarea(String nombre, LocalDate fechaObjetivo, BigDecimal horasEstimadas, String descripcion) {
         requireHorasPositivas(horasEstimadas);
         this.nombre = nombre;
         this.fechaObjetivo = fechaObjetivo;
         this.horasEstimadas = horasEstimadas;
         this.estado = EstadoSubtarea.PENDING;
-        this.descripcion = descripcion;
     }
 
     @PrePersist
@@ -79,7 +71,7 @@ public class Subtarea {
         this.evento = evento;
     }
 
-    public void actualizar(String nombre, LocalDate fechaObjetivo, BigDecimal horasEstimadas, String descripcion) {
+    public void actualizar(String nombre, LocalDate fechaObjetivo, BigDecimal horasEstimadas) {
         if (horasEstimadas != null) {
             requireHorasPositivas(horasEstimadas);
             this.horasEstimadas = horasEstimadas;
@@ -89,9 +81,6 @@ public class Subtarea {
         }
         if (fechaObjetivo != null) {
             this.fechaObjetivo = fechaObjetivo;
-        }
-        if (descripcion != null) {
-            this.descripcion = descripcion;
         }
     }
 
@@ -143,10 +132,6 @@ public class Subtarea {
 
     public String getNota() {
         return nota;
-    }
-
-    public String getDescripcion() {
-        return descripcion;
     }
 
     public LocalDateTime getDoneAt() {

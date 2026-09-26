@@ -52,8 +52,7 @@ public class SubtareaController {
             @PathVariable UUID eventId,
             @Valid @RequestBody CreateSubtareaRequest request
     ) {
-        var subtarea = createSubtareaUseCase.execute(
-                eventId, request.nombre(), request.fechaObjetivo(), request.horasEstimadas(), request.descripcion());
+        var subtarea = createSubtareaUseCase.execute(eventId, request.nombre(), request.fechaObjetivo(), request.horasEstimadas());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(SUBTAREA_CREATED, mapper.toResponse(subtarea)));
     }
 
@@ -71,8 +70,7 @@ public class SubtareaController {
                     + "sobrecarga diaria (US-06, US-07) y devuelve 409 si se supera el limite."
     )
     public ApiResponse<SubtareaResponse> update(@PathVariable UUID id, @Valid @RequestBody UpdateSubtareaRequest request) {
-        var subtarea = updateSubtareaUseCase.execute(
-                id, request.nombre(), request.fechaObjetivo(), request.horasEstimadas(), request.descripcion());
+        var subtarea = updateSubtareaUseCase.execute(id, request.nombre(), request.fechaObjetivo(), request.horasEstimadas());
         return ApiResponse.ok(SUBTAREA_UPDATED, mapper.toResponse(subtarea));
     }
 

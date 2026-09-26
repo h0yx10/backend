@@ -13,7 +13,6 @@ public record UpdateSubtareaRequest(
         String nombre,
         LocalDate fechaObjetivo,
         @DecimalMin(value = "0.0", inclusive = false, message = HORAS_ESTIMADAS_POSITIVE)
-        BigDecimal horasEstimadas,
-        String descripcion
+        BigDecimal horasEstimadas
 ) {
 }

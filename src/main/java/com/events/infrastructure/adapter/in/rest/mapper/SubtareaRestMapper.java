@@ -17,8 +17,7 @@ public class SubtareaRestMapper {
                 subtarea.getEstado(),
                 subtarea.getNota(),
                 subtarea.getDoneAt(),
-                subtarea.getCreatedAt(),
-                subtarea.getDescripcion()
+                subtarea.getCreatedAt()
         );
     }
 }

@@ -21,7 +21,6 @@ Plan de trabajo logistico, reprogramacion y ejecucion (US-02, US-03, US-06, US-0
 | `nombre` | string | si | no vacio |
 | `fechaObjetivo` | date ISO `yyyy-MM-dd` | si | - |
 | `horasEstimadas` | number (decimal) | si | > 0 |
-| `descripcion` | string | no | maximo 500 caracteres |
 
 **Response 201** - `data`: `SubtareaResponse`.
 
@@ -63,7 +62,6 @@ configurado en [capacidad.md](./capacidad.md) (US-07); si se supera, la operacio
 | `nombre` | string | - |
 | `fechaObjetivo` | date ISO `yyyy-MM-dd` | - |
 | `horasEstimadas` | number (decimal) | > 0 si se envia |
-| `descripcion` | string | - |
 
 **Response 200** - `data`: `SubtareaResponse`.
 
@@ -127,4 +125,3 @@ cambiar estado de subtarea, y dentro de `EventoResponse.subtareas`.
 | `nota` | string \| null | |
 | `doneAt` | datetime ISO \| null | momento en que se marco `DONE` |
 | `createdAt` | datetime ISO | momento de creacion |
-| `descripcion` | string \| null | `null` si no se ha guardado descripcion |
