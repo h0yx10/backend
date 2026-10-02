@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.events.application.port.in.EventoProgress;
+import com.events.application.port.out.CurrentOrganizadorPort;
 import com.events.application.port.out.EventoRepositoryPort;
 import com.events.application.port.out.SubtareaRepositoryPort;
 import com.events.domain.entity.Subtarea;
@@ -16,9 +17,16 @@ import org.junit.jupiter.api.Test;
 
 class GetEventoProgressUseCaseTest {
 
+    private static final UUID ORGANIZADOR_ID = UUID.randomUUID();
+    private final CurrentOrganizadorPort currentOrganizador = mock(CurrentOrganizadorPort.class);
+
+    {
+        when(currentOrganizador.currentOrganizadorId()).thenReturn(ORGANIZADOR_ID);
+    }
+
     private final EventoRepositoryPort eventoRepository = mock(EventoRepositoryPort.class);
     private final SubtareaRepositoryPort subtareaRepository = mock(SubtareaRepositoryPort.class);
-    private final GetEventoProgressUseCase useCase = new GetEventoProgressUseCase(eventoRepository, subtareaRepository);
+    private final GetEventoProgressUseCase useCase = new GetEventoProgressUseCase(eventoRepository, subtareaRepository, currentOrganizador);
 
     private Subtarea subtarea(boolean done) {
         Subtarea subtarea = new Subtarea("Tarea", LocalDate.now(), BigDecimal.ONE);
@@ -31,7 +39,7 @@ class GetEventoProgressUseCaseTest {
     @Test
     void calculaPorcentajeConSubtareasMixtas() {
         UUID eventoId = UUID.randomUUID();
-        when(eventoRepository.existsById(eventoId)).thenReturn(true);
+        when(eventoRepository.existsByIdAndOrganizadorId(eventoId, ORGANIZADOR_ID)).thenReturn(true);
         when(subtareaRepository.findByEventoId(eventoId))
                 .thenReturn(List.of(subtarea(true), subtarea(true), subtarea(false), subtarea(false)));
 
@@ -45,7 +53,7 @@ class GetEventoProgressUseCaseTest {
     @Test
     void devuelveCeroCuandoElEventoNoTieneSubtareas() {
         UUID eventoId = UUID.randomUUID();
-        when(eventoRepository.existsById(eventoId)).thenReturn(true);
+        when(eventoRepository.existsByIdAndOrganizadorId(eventoId, ORGANIZADOR_ID)).thenReturn(true);
         when(subtareaRepository.findByEventoId(eventoId)).thenReturn(List.of());
 
         EventoProgress progress = useCase.execute(eventoId);

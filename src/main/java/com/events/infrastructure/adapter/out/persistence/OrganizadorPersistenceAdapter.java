@@ -17,17 +17,7 @@ public class OrganizadorPersistenceAdapter implements OrganizadorRepositoryPort 
     }
 
     @Override
-    public Organizador save(Organizador organizador) {
-        return jpaOrganizadorRepository.save(organizador);
-    }
-
-    @Override
     public Optional<Organizador> findById(UUID id) {
         return jpaOrganizadorRepository.findById(id);
-    }
-
-    @Override
-    public Optional<Organizador> findByCorreo(String correo) {
-        return jpaOrganizadorRepository.findByCorreo(correo);
     }
 }

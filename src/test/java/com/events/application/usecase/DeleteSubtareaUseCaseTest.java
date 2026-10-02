@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.events.application.port.out.CurrentOrganizadorPort;
 import com.events.application.port.out.SubtareaRepositoryPort;
 import com.events.domain.entity.Subtarea;
 import com.events.domain.exception.SubtareaNotFoundException;
@@ -16,13 +17,20 @@ import org.junit.jupiter.api.Test;
 
 class DeleteSubtareaUseCaseTest {
 
+    private static final UUID ORGANIZADOR_ID = UUID.randomUUID();
+    private final CurrentOrganizadorPort currentOrganizador = mock(CurrentOrganizadorPort.class);
+
+    {
+        when(currentOrganizador.currentOrganizadorId()).thenReturn(ORGANIZADOR_ID);
+    }
+
     private final SubtareaRepositoryPort subtareaRepository = mock(SubtareaRepositoryPort.class);
-    private final DeleteSubtareaUseCase useCase = new DeleteSubtareaUseCase(subtareaRepository);
+    private final DeleteSubtareaUseCase useCase = new DeleteSubtareaUseCase(subtareaRepository, currentOrganizador);
 
     @Test
     void eliminaLaSubtareaCuandoExiste() {
         UUID subtareaId = UUID.randomUUID();
-        when(subtareaRepository.findById(subtareaId))
+        when(subtareaRepository.findByIdAndOrganizadorId(subtareaId, ORGANIZADOR_ID))
                 .thenReturn(Optional.of(new Subtarea("Reservar salon", LocalDate.now(), BigDecimal.ONE)));
 
         useCase.execute(subtareaId);
@@ -33,7 +41,7 @@ class DeleteSubtareaUseCaseTest {
     @Test
     void fallaSiLaSubtareaNoExiste() {
         UUID subtareaId = UUID.randomUUID();
-        when(subtareaRepository.findById(subtareaId)).thenReturn(Optional.empty());
+        when(subtareaRepository.findByIdAndOrganizadorId(subtareaId, ORGANIZADOR_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> useCase.execute(subtareaId)).isInstanceOf(SubtareaNotFoundException.class);
     }

@@ -8,7 +8,7 @@ Gestion de eventos y su plan de trabajo logistico (US-01, US-03).
 
 ## GET /api/events
 
-**Descripcion:** lista los eventos del organizador demo.
+**Descripcion:** lista los eventos del usuario autenticado.
 
 **Request:** sin parametros.
 

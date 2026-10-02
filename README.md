@@ -19,10 +19,13 @@ Este proyecto es la refactorizacion de `Back-Task` para cumplir el backlog del m
 
 ## Alcance de esta version
 
-Cubre el backend de las historias US-01 a US-10 y US-12 con un **organizador demo** (modo
-Sprint 0-1 del mini-proyecto: sin login). US-11 (autenticacion) y TS-04 quedan para una fase
-posterior; el punto de extension ya existe (`CurrentOrganizadorPort` /
-`DemoOrganizadorProvider`), por lo que agregar login no requiere tocar los casos de uso.
+Cubre el backend de las historias US-01 a US-12. US-11 (autenticacion) usa Spring Security
+con JWT (Bearer, HS256): registro, login, roles (`ORGANIZADOR`, `ADMIN`) y rutas protegidas.
+Cada usuario solo ve y modifica sus propios eventos, subtareas y capacidad diaria.
+
+- Arquitectura: [docs/arquitectura.md](docs/arquitectura.md)
+- Esquema SQL (usuarios, roles y modelo de negocio): [docs/schema.sql](docs/schema.sql)
+- Contratos para el front (auth + todos los endpoints): [docs/contratos-frontend.md](docs/contratos-frontend.md)
 
 ## Requisitos
 
@@ -63,10 +66,17 @@ Get-Content .env | ForEach-Object {
 mvn spring-boot:run
 ```
 
-Al arrancar, la app crea (una sola vez) un organizador demo en la tabla `organizadores` y lo
-reutiliza en cada peticion; las tablas se crean/actualizan automaticamente
-(`spring.jpa.hibernate.ddl-auto=update`) sobre el esquema ya existente en Supabase
-(`organizadores`, `eventos`, `subtareas`, `capacidades_diarias`).
+Antes del primer despliegue con login ejecuta [docs/schema.sql](docs/schema.sql) en el SQL
+Editor de Supabase (agrega columnas de autenticacion, `usuarios`, `roles`, `organizador_roles` e indices).
+Las tablas tambien se crean/actualizan automaticamente (`spring.jpa.hibernate.ddl-auto=update`)
+sobre el esquema existente (`organizadores` pasa a ser solo `usuario_id` + `activo`; nombre/correo/password se mueven a `usuarios`; `eventos`, `subtareas`, `capacidades_diarias`).
+
+Variables de seguridad:
+
+| Variable | Valor predeterminado | Descripcion |
+|---|---|---|
+| `JWT_SECRET` | *(clave de desarrollo)* | Clave HS256 para firmar tokens, minimo 32 caracteres. **Obligatoria en produccion.** |
+| `JWT_EXPIRATION_MINUTES` | `120` | Vigencia del token de acceso. |
 
 ## Documentacion interactiva
 
@@ -81,10 +91,16 @@ Todas las respuestas exitosas usan el formato `{ success, message, data, timesta
 errores usan `{ success: false, message, timestamp }` (409 de conflicto de capacidad agrega
 ademas `plannedHours`, `limitHours`, `exceedsBy`).
 
+Todas las rutas `/api/**` exigen `Authorization: Bearer <token>`, excepto registro y login.
+
 | Metodo | Ruta | US | Descripcion |
 |---|---|---|---|
+| `POST` | `/api/auth/register` | US-11 | Publica. Crea un usuario (rol ORGANIZADOR) y devuelve su token. |
+| `POST` | `/api/auth/login` | US-11 | Publica. Devuelve un token de acceso. |
+| `GET` | `/api/auth/me` | US-11 | Usuario dueno del token. |
+| `GET` | `/api/admin/users` | - | Solo rol ADMIN. Lista los usuarios. |
 | `POST` | `/api/events` | US-01, US-02 | Crea un evento y, opcionalmente, sus subtareas iniciales. |
-| `GET` | `/api/events` | US-01 | Lista los eventos del organizador demo. |
+| `GET` | `/api/events` | US-01 | Lista los eventos del usuario autenticado. |
 | `GET` | `/api/events/{id}` | US-01 | Consulta un evento con sus subtareas. |
 | `PATCH` | `/api/events/{id}` | US-03 | Actualiza los campos enviados de un evento. |
 | `DELETE` | `/api/events/{id}` | US-03 | Elimina un evento y sus subtareas (cascada). |

@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 class CapacidadDiariaTest {
 
-    private final Organizador organizador = new Organizador("Demo", "demo@x.com");
+    private final Organizador organizador = new Organizador(new Usuario("Demo", "demo@x.com", "hash"));
 
     @Test
     void rechazaLimiteMenorQueUno() {

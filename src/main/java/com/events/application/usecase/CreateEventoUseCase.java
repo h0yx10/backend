@@ -31,7 +31,7 @@ public class CreateEventoUseCase implements CreateEventoPort {
                            LocalDateTime fechaHora, String lugar, LocalDateTime plazoLimite,
                            List<NuevaSubtareaData> subtareasIniciales) {
         Organizador organizador = organizadorRepository.findById(currentOrganizador.currentOrganizadorId())
-                .orElseThrow(() -> new OrganizadorNotFoundException("No encontramos el organizador demo."));
+                .orElseThrow(() -> new OrganizadorNotFoundException("No encontramos el usuario autenticado."));
 
         Evento evento = new Evento(nombre, tipo, cliente, contactoCliente, fechaHora, lugar, plazoLimite, organizador);
 

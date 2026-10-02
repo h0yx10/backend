@@ -15,13 +15,16 @@ public interface JpaSubtareaRepository extends JpaRepository<Subtarea, UUID> {
     List<Subtarea> findByEventoId(UUID eventoId);
 
     /**
-     * Carga la subtarea junto con evento y organizador en la misma consulta. Los casos de uso
+     * Carga la subtarea (solo si pertenece al organizador indicado) junto con evento y
+     * organizador en la misma consulta. Los casos de uso
      * que reprograman/validan sobrecarga navegan subtarea -> evento -> organizador; sin este
      * fetch join esa navegacion falla con LazyInitializationException porque la sesion de
      * Hibernate ya se cerro cuando el puerto de salida retorna.
      */
-    @Query("SELECT s FROM Subtarea s JOIN FETCH s.evento e JOIN FETCH e.organizador WHERE s.id = :id")
-    Optional<Subtarea> findByIdWithEventoYOrganizador(@Param("id") UUID id);
+    @Query("SELECT s FROM Subtarea s JOIN FETCH s.evento e JOIN FETCH e.organizador o "
+            + "WHERE s.id = :id AND o.id = :organizadorId")
+    Optional<Subtarea> findByIdAndOrganizadorIdWithEvento(@Param("id") UUID id,
+                                                          @Param("organizadorId") UUID organizadorId);
 
     @Query("SELECT s FROM Subtarea s WHERE s.evento.organizador.id = :organizadorId")
     List<Subtarea> findByOrganizadorId(@Param("organizadorId") UUID organizadorId);

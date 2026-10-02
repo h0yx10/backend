@@ -1,6 +1,7 @@
 package com.events.application.usecase;
 
 import com.events.application.port.in.ChangeSubtareaStatusPort;
+import com.events.application.port.out.CurrentOrganizadorPort;
 import com.events.application.port.out.SubtareaRepositoryPort;
 import com.events.domain.entity.EstadoSubtarea;
 import com.events.domain.entity.Subtarea;
@@ -10,14 +11,17 @@ import java.util.UUID;
 public class ChangeSubtareaStatusUseCase implements ChangeSubtareaStatusPort {
 
     private final SubtareaRepositoryPort subtareaRepository;
+    private final CurrentOrganizadorPort currentOrganizador;
 
-    public ChangeSubtareaStatusUseCase(SubtareaRepositoryPort subtareaRepository) {
+    public ChangeSubtareaStatusUseCase(SubtareaRepositoryPort subtareaRepository,
+                                       CurrentOrganizadorPort currentOrganizador) {
         this.subtareaRepository = subtareaRepository;
+        this.currentOrganizador = currentOrganizador;
     }
 
     @Override
     public Subtarea execute(UUID subtareaId, EstadoSubtarea estado, String nota) {
-        Subtarea subtarea = subtareaRepository.findById(subtareaId)
+        Subtarea subtarea = subtareaRepository.findByIdAndOrganizadorId(subtareaId, currentOrganizador.currentOrganizadorId())
                 .orElseThrow(() -> new SubtareaNotFoundException("No encontramos la subtarea solicitada."));
 
         switch (estado) {

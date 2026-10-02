@@ -1,9 +1,12 @@
 package com.events.infrastructure.adapter.in.rest.exception;
 
 import static com.events.infrastructure.utils.constants.MessageConstants.INVALID_REQUEST;
+import static com.events.infrastructure.utils.constants.MessageConstants.UNAUTHENTICATED;
 import static com.events.infrastructure.utils.constants.MessageConstants.UNEXPECTED_ERROR;
 
 import com.events.domain.exception.CapacityConflictException;
+import com.events.domain.exception.CorreoYaRegistradoException;
+import com.events.domain.exception.CredencialesInvalidasException;
 import com.events.domain.exception.EventoNotFoundException;
 import com.events.domain.exception.OrganizadorNotFoundException;
 import com.events.domain.exception.SubtareaNotFoundException;
@@ -12,6 +15,7 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -35,6 +39,21 @@ public class GlobalExceptionHandler {
                 "timestamp", Instant.now().toString()
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    @ExceptionHandler(CorreoYaRegistradoException.class)
+    ResponseEntity<Map<String, Object>> correoYaRegistrado(CorreoYaRegistradoException exception) {
+        return error(HttpStatus.CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    ResponseEntity<Map<String, Object>> credencialesInvalidas(CredencialesInvalidasException exception) {
+        return error(HttpStatus.UNAUTHORIZED, exception.getMessage());
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    ResponseEntity<Map<String, Object>> unauthenticated(AuthenticationException exception) {
+        return error(HttpStatus.UNAUTHORIZED, UNAUTHENTICATED);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

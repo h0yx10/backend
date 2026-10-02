@@ -8,6 +8,7 @@ import com.events.application.port.out.CurrentOrganizadorPort;
 import com.events.application.port.out.EventoRepositoryPort;
 import com.events.domain.entity.Evento;
 import com.events.domain.entity.Organizador;
+import com.events.domain.entity.Usuario;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,7 @@ class ListEventosUseCaseTest {
     void listaLosEventosDelOrganizadorActual() {
         UUID organizadorId = UUID.randomUUID();
         when(currentOrganizador.currentOrganizadorId()).thenReturn(organizadorId);
-        Evento evento = new Evento("Boda", "Social", null, null, null, null, null, new Organizador("Demo", "demo@x.com"));
+        Evento evento = new Evento("Boda", "Social", null, null, null, null, null, new Organizador(new Usuario("Demo", "demo@x.com", "hash")));
         when(eventoRepository.findByOrganizadorId(organizadorId)).thenReturn(List.of(evento));
 
         assertThat(useCase.execute()).containsExactly(evento);

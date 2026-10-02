@@ -8,26 +8,36 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.events.application.port.out.CurrentOrganizadorPort;
 import com.events.application.port.out.CapacidadDiariaRepositoryPort;
 import com.events.application.port.out.SubtareaRepositoryPort;
 import com.events.domain.entity.CapacidadDiaria;
 import com.events.domain.entity.Evento;
 import com.events.domain.entity.Organizador;
+import com.events.domain.entity.Usuario;
 import com.events.domain.entity.Subtarea;
 import com.events.domain.exception.CapacityConflictException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class UpdateSubtareaUseCaseTest {
 
+    private static final UUID ORGANIZADOR_ID = UUID.randomUUID();
+    private final CurrentOrganizadorPort currentOrganizador = mock(CurrentOrganizadorPort.class);
+
+    {
+        when(currentOrganizador.currentOrganizadorId()).thenReturn(ORGANIZADOR_ID);
+    }
+
     private final SubtareaRepositoryPort subtareaRepository = mock(SubtareaRepositoryPort.class);
     private final CapacidadDiariaRepositoryPort capacidadDiariaRepository = mock(CapacidadDiariaRepositoryPort.class);
-    private final UpdateSubtareaUseCase useCase = new UpdateSubtareaUseCase(subtareaRepository, capacidadDiariaRepository);
+    private final UpdateSubtareaUseCase useCase = new UpdateSubtareaUseCase(subtareaRepository, capacidadDiariaRepository, currentOrganizador);
 
     private Subtarea subtareaConEvento() {
-        Organizador organizador = new Organizador("Demo", "demo@x.com");
+        Organizador organizador = new Organizador(new Usuario("Demo", "demo@x.com", "hash"));
         Evento evento = new Evento("Evento", "Social", "Cliente", null, null, null, null, organizador);
         Subtarea subtarea = new Subtarea("Reservar salon", LocalDate.now().plusDays(1), BigDecimal.valueOf(2));
         subtarea.asociarEvento(evento);
@@ -37,7 +47,7 @@ class UpdateSubtareaUseCaseTest {
     @Test
     void reprogramaCuandoNoHaySobrecarga() {
         Subtarea subtarea = subtareaConEvento();
-        when(subtareaRepository.findById(any())).thenReturn(Optional.of(subtarea));
+        when(subtareaRepository.findByIdAndOrganizadorId(any(), any())).thenReturn(Optional.of(subtarea));
         when(capacidadDiariaRepository.findCurrentByOrganizadorId(any())).thenReturn(Optional.empty());
         when(subtareaRepository.sumHorasPlanificadas(any(), any(), any())).thenReturn(BigDecimal.valueOf(2));
         when(subtareaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -52,9 +62,9 @@ class UpdateSubtareaUseCaseTest {
     @Test
     void detectaConflictoYNoGuardaCuandoSuperaElLimite() {
         Subtarea subtarea = subtareaConEvento();
-        when(subtareaRepository.findById(any())).thenReturn(Optional.of(subtarea));
+        when(subtareaRepository.findByIdAndOrganizadorId(any(), any())).thenReturn(Optional.of(subtarea));
         when(capacidadDiariaRepository.findCurrentByOrganizadorId(any()))
-                .thenReturn(Optional.of(new CapacidadDiaria(new Organizador("Demo", "demo@x.com"), LocalDate.now(), BigDecimal.valueOf(6))));
+                .thenReturn(Optional.of(new CapacidadDiaria(new Organizador(new Usuario("Demo", "demo@x.com", "hash")), LocalDate.now(), BigDecimal.valueOf(6))));
         // 5h ya planificadas ese dia (sin contar la propia subtarea) + 2h nuevas = 7h > 6h limite
         when(subtareaRepository.sumHorasPlanificadas(any(), any(), any())).thenReturn(BigDecimal.valueOf(5));
 
@@ -74,9 +84,9 @@ class UpdateSubtareaUseCaseTest {
     @Test
     void permiteGuardarCuandoElTotalEsExactamenteElLimite() {
         Subtarea subtarea = subtareaConEvento();
-        when(subtareaRepository.findById(any())).thenReturn(Optional.of(subtarea));
+        when(subtareaRepository.findByIdAndOrganizadorId(any(), any())).thenReturn(Optional.of(subtarea));
         when(capacidadDiariaRepository.findCurrentByOrganizadorId(any()))
-                .thenReturn(Optional.of(new CapacidadDiaria(new Organizador("Demo", "demo@x.com"), LocalDate.now(), BigDecimal.valueOf(6))));
+                .thenReturn(Optional.of(new CapacidadDiaria(new Organizador(new Usuario("Demo", "demo@x.com", "hash")), LocalDate.now(), BigDecimal.valueOf(6))));
         when(subtareaRepository.sumHorasPlanificadas(any(), any(), any())).thenReturn(BigDecimal.valueOf(4));
         when(subtareaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -88,7 +98,7 @@ class UpdateSubtareaUseCaseTest {
     @Test
     void noValidaCargaCuandoSoloCambiaElNombre() {
         Subtarea subtarea = subtareaConEvento();
-        when(subtareaRepository.findById(any())).thenReturn(Optional.of(subtarea));
+        when(subtareaRepository.findByIdAndOrganizadorId(any(), any())).thenReturn(Optional.of(subtarea));
         when(subtareaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         useCase.execute(null, "Nuevo nombre", null, null);

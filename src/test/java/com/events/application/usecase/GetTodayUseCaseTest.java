@@ -10,6 +10,7 @@ import com.events.application.port.out.SubtareaRepositoryPort;
 import com.events.domain.entity.EstadoSubtarea;
 import com.events.domain.entity.Evento;
 import com.events.domain.entity.Organizador;
+import com.events.domain.entity.Usuario;
 import com.events.domain.entity.Subtarea;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,7 +25,7 @@ class GetTodayUseCaseTest {
     private final GetTodayUseCase useCase = new GetTodayUseCase(subtareaRepository, currentOrganizador);
 
     private Subtarea subtarea(String nombre, LocalDate fecha, double horas, EstadoSubtarea estado) {
-        Evento evento = new Evento("Evento", "Social", "Cliente", null, null, null, null, new Organizador("Demo", "demo@x.com"));
+        Evento evento = new Evento("Evento", "Social", "Cliente", null, null, null, null, new Organizador(new Usuario("Demo", "demo@x.com", "hash")));
         Subtarea subtarea = new Subtarea(nombre, fecha, BigDecimal.valueOf(horas));
         subtarea.asociarEvento(evento);
         if (estado == EstadoSubtarea.DONE) {

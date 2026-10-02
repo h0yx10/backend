@@ -2,6 +2,11 @@
 
 Base URL local: `http://localhost:8080`
 
+> **Autenticacion:** todas las rutas `/api/**` exigen `Authorization: Bearer <accessToken>`,
+> excepto `POST /api/auth/register` y `POST /api/auth/login`. Ver [auth.md](./auth.md).
+> Contrato completo para el cliente front: [contratos-frontend.md](./contratos-frontend.md).
+> Arquitectura: [arquitectura.md](./arquitectura.md). Esquema SQL: [schema.sql](./schema.sql).
+
 ## Sobre de respuesta estandar
 
 Toda respuesta exitosa se envuelve en `ApiResponse<T>`:
@@ -25,9 +30,11 @@ Errores segun el caso:
 
 | Status | Cuando ocurre |
 |---|---|
+| `401 Unauthorized` | sin token, token invalido/expirado, o credenciales de login incorrectas |
+| `403 Forbidden` | el token es valido pero el rol no alcanza (ej. `/api/admin/**` sin ADMIN) |
 | `400 Bad Request` | body invalido / no cumple validaciones (`@NotBlank`, `@NotNull`, `@Size`, `@DecimalMin`) o JSON mal formado |
-| `404 Not Found` | evento, subtarea u organizador no encontrado |
-| `409 Conflict` | la reprogramacion de una subtarea supera el limite diario de horas (ver contrato especial abajo) |
+| `404 Not Found` | evento, subtarea u organizador no encontrado, **o perteneciente a otro usuario** |
+| `409 Conflict` | correo ya registrado, o la reprogramacion de una subtarea supera el limite diario de horas (ver contrato especial abajo) |
 | `500 Internal Server Error` | error inesperado |
 
 Contrato especial del **409** (sobrecarga de capacidad), agrega tres campos al error estandar:
@@ -42,6 +49,7 @@ Contrato especial del **409** (sobrecarga de capacidad), agrega tres campos al e
 
 | Archivo | Recurso | Historias de usuario |
 |---|---|---|
+| [auth.md](./auth.md) | Registro, login, usuario actual, admin | US-11 |
 | [eventos.md](./eventos.md) | Eventos | US-01, US-02, US-03, US-10 |
 | [subtareas.md](./subtareas.md) | Subtareas logisticas | US-02, US-03, US-06, US-07, US-09 |
 | [capacidad.md](./capacidad.md) | Limite diario de horas | US-12 |
@@ -52,6 +60,10 @@ Contrato especial del **409** (sobrecarga de capacidad), agrega tres campos al e
 
 | Metodo | Ruta | Descripcion |
 |---|---|---|
+| POST | `/api/auth/register` | Registrarse (publica) |
+| POST | `/api/auth/login` | Iniciar sesion (publica) |
+| GET | `/api/auth/me` | Usuario autenticado |
+| GET | `/api/admin/users` | Listar usuarios (solo ADMIN) |
 | GET | `/api/events` | Listar eventos del organizador |
 | GET | `/api/events/{id}` | Consultar un evento con sus subtareas |
 | POST | `/api/events` | Crear un evento (con plan inicial de subtareas opcional) |

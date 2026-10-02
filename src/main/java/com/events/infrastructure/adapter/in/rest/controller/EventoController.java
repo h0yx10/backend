@@ -52,7 +52,7 @@ public class EventoController {
     private final EventoRestMapper mapper;
 
     @GetMapping
-    @Operation(summary = "Listar eventos", description = "Lista los eventos del organizador demo.")
+    @Operation(summary = "Listar eventos", description = "Lista los eventos del usuario autenticado.")
     public ApiResponse<List<EventoResponse>> list() {
         List<EventoResponse> eventos = listEventosUseCase.execute().stream().map(mapper::toResponse).toList();
         return ApiResponse.ok(EVENTO_LIST_RETRIEVED, eventos);

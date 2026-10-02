@@ -23,8 +23,8 @@ public class EventoPersistenceAdapter implements EventoRepositoryPort {
     }
 
     @Override
-    public Optional<Evento> findById(UUID id) {
-        return jpaEventoRepository.findByIdWithSubtareas(id);
+    public Optional<Evento> findByIdAndOrganizadorId(UUID id, UUID organizadorId) {
+        return jpaEventoRepository.findByIdAndOrganizadorIdWithSubtareas(id, organizadorId);
     }
 
     @Override
@@ -38,7 +38,7 @@ public class EventoPersistenceAdapter implements EventoRepositoryPort {
     }
 
     @Override
-    public boolean existsById(UUID id) {
-        return jpaEventoRepository.existsById(id);
+    public boolean existsByIdAndOrganizadorId(UUID id, UUID organizadorId) {
+        return jpaEventoRepository.existsByIdAndOrganizadorId(id, organizadorId);
     }
 }

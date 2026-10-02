@@ -25,8 +25,8 @@ public class SubtareaPersistenceAdapter implements SubtareaRepositoryPort {
     }
 
     @Override
-    public Optional<Subtarea> findById(UUID id) {
-        return jpaSubtareaRepository.findByIdWithEventoYOrganizador(id);
+    public Optional<Subtarea> findByIdAndOrganizadorId(UUID id, UUID organizadorId) {
+        return jpaSubtareaRepository.findByIdAndOrganizadorIdWithEvento(id, organizadorId);
     }
 
     @Override
