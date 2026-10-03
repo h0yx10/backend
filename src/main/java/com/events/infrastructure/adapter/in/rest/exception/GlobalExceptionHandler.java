@@ -29,6 +29,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler({EventoNotFoundException.class, SubtareaNotFoundException.class, OrganizadorNotFoundException.class, UsuarioNotFoundException.class})
     ResponseEntity<Map<String, Object>> notFound(RuntimeException exception) {
         return error(HttpStatus.NOT_FOUND, exception.getMessage());
