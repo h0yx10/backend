@@ -10,6 +10,7 @@ La cuenta de login vive en `usuarios`; sus roles viven en `usuario_roles`. El pe
 |---|---|---|---|
 | POST | `/api/auth/register` | Público | 201: cuenta ORGANIZADOR, perfil activo y token |
 | POST | `/api/auth/login` | Público | 200: token y usuario |
+| POST | `/api/auth/logout` | Autenticado | 200: token revocado, `data: null` |
 | GET | `/api/auth/me` | Autenticado | 200: usuario actual |
 | PATCH | `/api/auth/me` | Autenticado | 200: perfil actualizado |
 | DELETE | `/api/auth/me` | Autenticado | 200: `data: null` |
@@ -28,7 +29,8 @@ Enviar `Authorization: Bearer <accessToken>` a rutas protegidas. Después de val
 emisor y expiración, cada petición consulta la cuenta y sus roles actuales en BD. Una cuenta
 eliminada o inactiva devuelve 401; retirar un permiso devuelve 403 en la ruta correspondiente.
 Los roles del JWT son una instantánea informativa: las autorizaciones usan los roles de BD.
-No hay refresh token ni endpoint logout; cerrar sesión elimina el token en el cliente.
+No hay refresh token. Para cerrar sesión, llamar POST /api/auth/logout con el Bearer
+actual y después borrar el token guardado en el cliente.
 Cambiar contraseña no revoca otros tokens ya emitidos.
 
 PATCH propio admite `{ nombre?, correo?, password?, passwordActual? }`. Para cambiar password
@@ -94,6 +96,7 @@ la respuesta HTTP y no es un campo del JSON.
 |---|---|---|
 | `POST /api/auth/register` | 201 | `La cuenta se creo correctamente.` |
 | `POST /api/auth/login` | 200 | `Iniciaste sesion correctamente.` |
+| `POST /api/auth/logout` | 200 | `Cerraste sesion correctamente.` |
 | `GET /api/auth/me` | 200 | `El usuario se consulto correctamente.` |
 | `PATCH /api/auth/me` | 200 | `Perfil actualizado correctamente.` |
 | `DELETE /api/auth/me` | 200 | `Cuenta eliminada correctamente.` |
@@ -156,6 +159,68 @@ Login correcto. El token y expiresIn dependen de la configuración.
     }
   },
   "timestamp": "2026-10-02T15:15:30Z"
+}
+```
+
+### POST /api/auth/logout — 200
+
+Enviar el token de la sesión a cerrar; no lleva body:
+
+```http
+POST /api/auth/logout
+Authorization: Bearer <accessToken>
+```
+
+```json
+{
+  "success": true,
+  "message": "Cerraste sesion correctamente.",
+  "data": null,
+  "timestamp": "2026-10-03T15:15:30Z"
+}
+```
+
+Después del 200, ese mismo JWT responde 401 en cualquier ruta protegida, incluso si se
+repite logout. Otros tokens de la cuenta siguen funcionando; iniciar sesión de nuevo emite
+un token diferente. Logout no elimina la cuenta ni sus datos ni cambia sus roles.
+
+La revocación se guarda en PostgreSQL usando solo el SHA-256 del token y su expiración.
+Se comparte entre instancias y permanece tras reinicios. Al ejecutar logout se limpian las
+revocaciones expiradas, conservando el margen de 60 segundos aceptado al validar JWT.
+Una petición que ya estaba autenticada antes de confirmar logout puede terminar su ejecución.
+
+El frontend debe borrar accessToken, expiresAt y el usuario que conserva en memoria después
+del 200, o del 401 si la sesión ya no está disponible. Si hay un fallo de red o un 500, no se
+ha confirmado la revocación: mostrar el error y permitir reintentar. El backend no puede
+eliminar directamente localStorage/sessionStorage del navegador.
+
+401 sin token:
+
+```json
+{
+  "success": false,
+  "message": "Debes iniciar sesion para acceder a este recurso.",
+  "timestamp": "2026-10-03T15:15:30Z"
+}
+```
+
+401 token inválido, expirado o revocado:
+
+```json
+{
+  "success": false,
+  "message": "Tu sesion expiro o el token no es valido. Inicia sesion nuevamente.",
+  "timestamp": "2026-10-03T15:15:30Z"
+}
+```
+
+500 al fallar el cierre de sesión:
+
+```json
+{
+  "success": false,
+  "message": "Ocurrio un inconveniente. Intentalo nuevamente mas tarde.",
+  "timestamp": "2026-10-03T15:15:30Z"
 }
 ```
 
@@ -347,6 +412,7 @@ fallo inesperado. Las respuestas de error no incluyen data, token ni un código 
 |---|---|
 | `POST /api/auth/register` | 400 por validación/JSON/campos desconocidos; 409 por correo duplicado |
 | `POST /api/auth/login` | 400 por credenciales vacías/JSON inválido; 401 por credenciales incorrectas o perfil inactivo |
+| `POST /api/auth/logout` | 401 sin token o con token inválido/expirado/revocado; 500 si falla la persistencia de la revocación |
 | `GET /api/auth/me` | 401 por cuenta/token no disponibles |
 | `PATCH /api/auth/me` | 400 por validación o campos no permitidos; 401 por passwordActual incorrecta/ausente; 409 por correo duplicado |
 | `DELETE /api/auth/me` | 409 por datos asociados o último ADMIN habilitado |
@@ -444,7 +510,7 @@ Petición protegida sin Authorization: Bearer. Las respuestas 401 de seguridad t
 
 ### 401 — token o cuenta no disponibles
 
-JWT inválido/expirado, sujeto inválido, cuenta eliminada o perfil inactivo, detectados durante la autenticación de una petición protegida.
+JWT inválido/expirado/revocado, sujeto inválido, cuenta eliminada o perfil inactivo, detectados durante la autenticación de una petición protegida.
 
 ```json
 {

@@ -51,6 +51,10 @@ import com.events.application.port.out.CurrentUsuarioPort;
 import com.events.application.port.out.TransactionPort;
 import com.events.application.port.in.UsuariosPort;
 import com.events.application.usecase.UsuariosUseCase;
+import com.events.application.port.in.LogoutPort;
+import com.events.application.port.out.CurrentTokenPort;
+import com.events.application.port.out.TokenRevocationPort;
+import com.events.application.usecase.LogoutUseCase;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -63,6 +67,11 @@ public class UseCaseConfig {
                                      PasswordHasherPort passwordHasher,
                                      TokenProviderPort tokenProvider, TransactionPort transaction) {
         return new RegisterUseCase(usuarioRepository, rolRepository, passwordHasher, tokenProvider, transaction);
+    }
+
+    @Bean
+    public LogoutPort logoutPort(CurrentTokenPort current, TokenRevocationPort revocations) {
+        return new LogoutUseCase(current, revocations);
     }
 
     @Bean

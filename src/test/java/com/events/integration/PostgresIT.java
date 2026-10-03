@@ -48,7 +48,7 @@ class PostgresIT {
     }
     @AfterEach
     void cleanup() {
-        jdbc.execute("TRUNCATE usuarios, usuario_roles, organizadores, eventos, subtareas, capacidades_diarias CASCADE");
+        jdbc.execute("TRUNCATE tokens_revocados, usuarios, usuario_roles, organizadores, eventos, subtareas, capacidades_diarias CASCADE");
     }
     private JsonNode register(String correo) throws Exception {
         return body(mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
@@ -255,6 +255,51 @@ class PostgresIT {
                 .content("{\"nombre\":\"Predeterminado\",\"correo\":\"default@correo.com\",\"password\":\"Secreta123\"}"))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.data.roles[0]").value("ORGANIZADOR"))
                 .andExpect(jsonPath("$.data.organizadorId").isNotEmpty());
+    }
+    @Autowired TokenRevocationPort revocations;
+    @Autowired org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder;
+    @Test
+    void logoutPersistsRevocationAndKeepsOtherSessionsValid() throws Exception {
+        var first = register("logout@correo.com");
+        var second = body(mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"correo\":\"logout@correo.com\",\"password\":\"Secreta123\"}"))
+                .andExpect(status().isOk()).andReturn()).get("data");
+        assertThat(token(first)).isNotEqualTo(token(second));
+        String raw = first.get("accessToken").asText();
+        mvc.perform(post("/api/auth/logout").header("Authorization", token(first)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.message").value("Cerraste sesion correctamente."))
+                .andExpect(jsonPath("$.data").isEmpty());
+        mvc.perform(get("/api/auth/me").header("Authorization", token(first))).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/events").header("Authorization", token(first))).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/logout").header("Authorization", token(first))).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/auth/me").header("Authorization", token(second))).andExpect(status().isOk());
+        String stored = jdbc.queryForObject("select token_hash from tokens_revocados", String.class);
+        assertThat(stored).hasSize(64).isNotEqualTo(raw);
+        var freshAdapter = new com.events.infrastructure.adapter.out.persistence.TokenRevocationPersistenceAdapter(jdbc);
+        assertThat(freshAdapter.isRevoked(raw)).isTrue();
+        var freshConverter = new com.events.infrastructure.security.DatabaseJwtAuthenticationConverter(usuarioRepository, freshAdapter);
+        assertThatThrownBy(() -> freshConverter.convert(jwtDecoder.decode(raw)))
+                .isInstanceOf(org.springframework.security.oauth2.server.resource.InvalidBearerTokenException.class);
+        var loginAgain = body(mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"correo\":\"logout@correo.com\",\"password\":\"Secreta123\"}"))
+                .andExpect(status().isOk()).andReturn()).get("data");
+        mvc.perform(get("/api/auth/me").header("Authorization", token(loginAgain))).andExpect(status().isOk());
+    }
+    @Test
+    void concurrentRevocationsAreIdempotentAndCleanupRespectsClockSkew() throws Exception {
+        Instant future = Instant.now().plusSeconds(600);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var start = new CountDownLatch(1);
+            Callable<Void> work = () -> { start.await(); revocations.revoke("same-token", future); return null; };
+            var a = pool.submit(work); var b = pool.submit(work); start.countDown();
+            a.get(10, TimeUnit.SECONDS); b.get(10, TimeUnit.SECONDS);
+        }
+        assertThat(jdbc.queryForObject("select count(*) from tokens_revocados", Integer.class)).isEqualTo(1);
+        revocations.revoke("expired", Instant.now().minusSeconds(300));
+        revocations.revoke("in-clock-skew", Instant.now().minusSeconds(10));
+        assertThat(revocations.isRevoked("expired")).isFalse();
+        assertThat(revocations.isRevoked("in-clock-skew")).isTrue();
+        assertThat(revocations.isRevoked("same-token")).isTrue();
     }
     private boolean removeAdmin(CountDownLatch start, UUID id) throws Exception {
         start.await();

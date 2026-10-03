@@ -30,8 +30,23 @@ Cada usuario solo ve y modifica sus propios eventos, subtareas y capacidad diari
 ## Requisitos
 
 - JDK 21
-- Maven 3.9 o una version posterior (o usa el `mvn` de tu IDE)
+- Maven Wrapper incluido (`mvnw`/`mvnw.cmd`), con Maven 3.9.16; no necesitas instalar Maven por separado.
 - Un proyecto de Supabase (o cualquier Postgres accesible)
+
+El wrapper descarga Maven en el primer uso. Para iniciar desde la carpeta `backend`:
+
+```bash
+./mvnw spring-boot:run
+```
+
+En Windows: `.\mvnw.cmd spring-boot:run`. Java debe estar disponible en PATH o mediante
+JAVA_HOME, y la base de datos debe tener el esquema indicado abajo. Si el wrapper indica
+que JAVA_HOME no está definido correctamente, configurar la carpeta del JDK antes de ejecutar:
+
+```bash
+export JAVA_HOME=/ruta/al/jdk
+./mvnw spring-boot:run
+```
 
 ## Configuracion
 
@@ -55,7 +70,7 @@ La aplicacion importa `.env` si existe. Tambien puedes exportar las variables an
 ```bash
 # bash
 set -a; source .env; set +a
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 ```powershell
@@ -63,7 +78,7 @@ mvn spring-boot:run
 Get-Content .env | ForEach-Object {
   if ($_ -match '^([^#=]+)=(.*)$') { [System.Environment]::SetEnvironmentVariable($matches[1], $matches[2]) }
 }
-mvn spring-boot:run
+.\mvnw.cmd spring-boot:run
 ```
 
 Antes del primer despliegue ejecuta [docs/schema.sql](docs/schema.sql) en una **base nueva**
@@ -102,6 +117,7 @@ La eliminación devuelve 409 si existen eventos/capacidades o se trata del últi
 |---|---|---|---|
 | `POST` | `/api/auth/register` | US-11 | Publica. Crea un usuario (rol ORGANIZADOR) y devuelve su token. |
 | `POST` | `/api/auth/login` | US-11 | Publica. Devuelve un token de acceso. |
+| `POST` | `/api/auth/logout` | US-11 | Revoca el Bearer actual; el frontend borra su token local. |
 | `GET` | `/api/auth/me` | US-11 | Usuario dueno del token. |
 | `GET` | `/api/admin/users` | - | ADMIN: lista los usuarios. |
 | `GET` | `/api/admin/users/{id}` | - | ADMIN: consulta un usuario. |
@@ -145,7 +161,7 @@ menos horas (reducir), que es la misma operacion sin conflicto.
 ## Pruebas y cobertura
 
 ```bash
-mvn verify
+./mvnw verify
 ```
 
 Ejecuta las pruebas unitarias (dominio y casos de uso), las reglas de ArchUnit y el chequeo de
@@ -156,7 +172,7 @@ con nombre `events_test_*` y ejecuta:
 
 ```bash
 TEST_DB_URL=jdbc:postgresql://localhost:5432/events_test_users \
-TEST_DB_USERNAME=postgres TEST_DB_PASSWORD=postgres mvn -Ppostgres-it verify
+TEST_DB_USERNAME=postgres TEST_DB_PASSWORD=postgres ./mvnw -Ppostgres-it verify
 ```
 
 Este perfil aplica `docs/schema.sql`, valida el modelo JPA y limpia los datos entre pruebas.
@@ -187,7 +203,13 @@ ni Lombok.
 ## Docker
 
 ```bash
-mvn clean package
+./mvnw clean package
 docker build -t events-api .
 docker run --rm -p 8080:8080 --env-file .env events-api
 ```
+
+Para actualizar una base que ya usa el esquema actual, ejecutar
+[docs/migrations/001_logout.sql](docs/migrations/001_logout.sql) antes de desplegar logout.
+Las bases nuevas incluyen `tokens_revocados` en `docs/schema.sql`. El cierre de sesión
+invalida el JWT actual en BD, incluso tras reinicios y entre instancias; otros tokens siguen
+vigentes. Detalle y respuestas JSON en [docs/auth.md](docs/auth.md).

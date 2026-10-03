@@ -61,6 +61,10 @@ class SecurityConfigTest {
     private CurrentOrganizadorPort currentOrganizador;
 
     @MockBean
+    private com.events.application.port.in.LogoutPort logoutPort;
+    @MockBean
+    private com.events.application.port.out.TokenRevocationPort revocations;
+    @MockBean
     private RegisterPort registerPort;
     @MockBean
     private LoginPort loginPort;
@@ -189,5 +193,27 @@ class SecurityConfigTest {
     void tokenExpiradoDevuelve401() throws Exception {
         mockMvc.perform(get("/api/auth/me").header("Authorization", signed(UUID.randomUUID().toString(), java.time.Instant.now().minusSeconds(120))))
                 .andExpect(status().isUnauthorized());
+    }
+    @Test
+    void logoutExigeToken() throws Exception {
+        mockMvc.perform(post("/api/auth/logout")).andExpect(status().isUnauthorized());
+        org.mockito.Mockito.verifyNoInteractions(logoutPort);
+    }
+    @Test
+    void logoutDevuelveMensajeYDataNull() throws Exception {
+        mockMvc.perform(post("/api/auth/logout").header("Authorization", bearer(usuarioCon(NombreRol.ADMIN))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Cerraste sesion correctamente."))
+                .andExpect(jsonPath("$.data").isEmpty());
+        org.mockito.Mockito.verify(logoutPort).execute();
+    }
+    @Test
+    void tokenRevocadoNoAccedeANingunaRutaProtegida() throws Exception {
+        String bearer = bearer(usuarioCon(NombreRol.ADMIN));
+        when(revocations.isRevoked(bearer.substring(7))).thenReturn(true);
+        mockMvc.perform(get("/api/auth/me").header("Authorization", bearer)).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/admin/users").header("Authorization", bearer)).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/auth/logout").header("Authorization", bearer)).andExpect(status().isUnauthorized());
+        org.mockito.Mockito.verifyNoInteractions(logoutPort);
     }
 }

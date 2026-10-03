@@ -2,6 +2,8 @@ package com.events.infrastructure.adapter.in.rest.controller;
 
 import static com.events.infrastructure.utils.constants.MessageConstants.CURRENT_USER_RETRIEVED;
 import static com.events.infrastructure.utils.constants.MessageConstants.LOGIN_SUCCESS;
+import static com.events.infrastructure.utils.constants.MessageConstants.LOGOUT_SUCCESS;
+import com.events.application.port.in.LogoutPort;
 import static com.events.infrastructure.utils.constants.MessageConstants.REGISTER_SUCCESS;
 
 import com.events.application.port.in.GetCurrentUserPort;
@@ -41,6 +43,7 @@ public class AuthController {
     private final GetCurrentUserPort getCurrentUserUseCase;
     private final UsuarioRestMapper mapper;
     private final UsuariosPort usuarios;
+    private final LogoutPort logoutUseCase;
 
     @PostMapping("/register")
     @SecurityRequirements
@@ -56,6 +59,13 @@ public class AuthController {
     public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         var result = loginUseCase.execute(request.correo(), request.password());
         return ApiResponse.ok(LOGIN_SUCCESS, mapper.toResponse(result));
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Cerrar sesion", description = "Revoca el JWT enviado en Authorization. El cliente debe borrar su token local.")
+    public ApiResponse<Void> logout() {
+        logoutUseCase.execute();
+        return ApiResponse.ok(LOGOUT_SUCCESS, null);
     }
 
     @GetMapping("/me")

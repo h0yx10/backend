@@ -24,6 +24,7 @@ public final class MessageConstants {
     public static final String CAPACIDAD_UPDATED = "La capacidad diaria se actualizo correctamente.";
 
     public static final String REGISTER_SUCCESS = "La cuenta se creo correctamente.";
+    public static final String LOGOUT_SUCCESS = "Cerraste sesion correctamente.";
     public static final String LOGIN_SUCCESS = "Iniciaste sesion correctamente.";
     public static final String CURRENT_USER_RETRIEVED = "El usuario se consulto correctamente.";
     public static final String USUARIO_LIST_RETRIEVED = "Los usuarios se consultaron correctamente.";

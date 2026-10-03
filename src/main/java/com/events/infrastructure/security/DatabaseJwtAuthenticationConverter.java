@@ -1,6 +1,7 @@
 package com.events.infrastructure.security;
 
 import com.events.application.port.out.UsuarioRepositoryPort;
+import com.events.application.port.out.TokenRevocationPort;
 import com.events.domain.entity.NombreRol;
 import java.util.UUID;
 import org.springframework.core.convert.converter.Converter;
@@ -15,9 +16,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class DatabaseJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
     private final UsuarioRepositoryPort usuarios;
-    public DatabaseJwtAuthenticationConverter(UsuarioRepositoryPort usuarios) { this.usuarios = usuarios; }
+    private final TokenRevocationPort revocations;
+    public DatabaseJwtAuthenticationConverter(UsuarioRepositoryPort usuarios, TokenRevocationPort revocations) {
+        this.usuarios = usuarios;
+        this.revocations = revocations;
+    }
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {
+        if (revocations.isRevoked(jwt.getTokenValue())) {
+            throw new InvalidBearerTokenException("El token fue revocado al cerrar sesion.");
+        }
         UUID id;
         try { id = UUID.fromString(jwt.getSubject()); }
         catch (IllegalArgumentException | NullPointerException ex) { throw new InvalidBearerTokenException("Usuario invalido."); }

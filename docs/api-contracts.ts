@@ -191,3 +191,6 @@ export interface TodayQuery {
   eventId?: UUID;
   status?: EstadoSubtarea;
 }
+
+/** POST /api/auth/logout: Bearer obligatorio, sin body. */
+export type LogoutResponse = ApiResponse<null>;

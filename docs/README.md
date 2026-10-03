@@ -63,6 +63,7 @@ Contrato especial del **409** (sobrecarga de capacidad), agrega tres campos al e
 |---|---|---|
 | POST | `/api/auth/register` | Registrarse (publica) |
 | POST | `/api/auth/login` | Iniciar sesion (publica) |
+| POST | `/api/auth/logout` | Cerrar sesión y revocar el JWT actual |
 | GET | `/api/auth/me` | Usuario autenticado |
 | GET | `/api/admin/users` | Listar usuarios (solo ADMIN) |
 | GET | `/api/admin/users/{id}` | Consultar usuario (ADMIN) |

@@ -43,7 +43,7 @@ springdoc:
 
 management: { endpoints: { web: { exposure: { include: health,info } } } }
 app:
-  cors-origin: '${CORS_ORIGIN:http://localhost:4300,https://frontend-pi-olive-30.vercel.app}'
+  cors-origin: '${CORS_ORIGIN:http://localhost:4200,https://frontend-pi-olive-30.vercel.app}'
   security:
     jwt:
       secret: '${JWT_SECRET:dev-only-secret-change-me-please-32bytes-min!!}'

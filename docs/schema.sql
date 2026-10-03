@@ -59,6 +59,11 @@ CREATE INDEX ix_eventos_organizador ON eventos(organizador_id);
 CREATE INDEX ix_subtareas_evento ON subtareas(evento_id);
 CREATE INDEX ix_subtareas_evento_fecha_estado ON subtareas(evento_id, fecha_objetivo, estado);
 CREATE INDEX ix_capacidades_organizador_fecha ON capacidades_diarias(organizador_id, fecha DESC);
+CREATE TABLE tokens_revocados (
+    token_hash VARCHAR(64) PRIMARY KEY,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+CREATE INDEX ix_tokens_revocados_expiracion ON tokens_revocados(expires_at);
 COMMIT;
 
 -- Primer ADMIN: registrar primero una cuenta por POST /api/auth/register.

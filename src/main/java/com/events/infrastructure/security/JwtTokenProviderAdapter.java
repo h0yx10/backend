@@ -4,6 +4,7 @@ import com.events.application.port.out.TokenProviderPort;
 import com.events.domain.entity.Usuario;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -34,6 +35,7 @@ public class JwtTokenProviderAdapter implements TokenProviderPort {
     public String generate(Usuario usuario) {
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()
+                .id(UUID.randomUUID().toString())
                 .issuer(issuer)
                 .issuedAt(now)
                 .expiresAt(now.plus(expiration))

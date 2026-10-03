@@ -149,3 +149,17 @@ usuarios 1───0..1 organizadores 1───* eventos 1───* subtareas
 las FK de perfil y asignaciones de roles permiten eliminar una cuenta sin datos de negocio.
 `SpringTransactionAdapter` implementa `TransactionPort` mediante `TransactionTemplate`;
 las capas de aplicación y dominio no dependen de Spring.
+
+## Cierre de sesión
+
+`POST /api/auth/logout` invoca `LogoutPort`/`LogoutUseCase`. `CurrentTokenPort` obtiene el
+JWT autenticado y su expiración del contexto de seguridad; `TokenRevocationPort` persiste
+su hash SHA-256 y expiración en `tokens_revocados`. Los puertos y el caso de uso no conocen
+Spring ni JWT. El adaptador JDBC usa una transacción y un INSERT idempotente.
+
+`DatabaseJwtAuthenticationConverter` consulta las revocaciones antes de aceptar la cuenta
+y sus roles. JWT revocado devuelve 401. Cada emisión incluye un `jti` UUID distinto para
+que dos sesiones creadas en el mismo segundo puedan cerrarse independientemente. La
+revocación por hash también cubre tokens previos sin `jti`. No hay sesiones HTTP del servidor;
+las revocaciones se comparten en PostgreSQL. Se eliminan expiradas al realizar logout,
+respetando los 60 segundos de desfase del validador.

@@ -30,7 +30,10 @@ para pegar el token).
    puede indicar `passwordActual` incorrecta: consulta `GET /api/auth/me`; si devuelve 200,
    conserva la sesion y muestra el error del formulario; si devuelve 401, borra el token
    y redirige a login. Un `403` indica falta de permisos y no debe cerrar la sesion.
-6. Logout: borrar el token en el cliente (no hay endpoint de logout; el token es stateless).
+6. Logout: llamar `POST /api/auth/logout` con el Bearer actual, sin body. Tras 200 o 401,
+   borrar el token, expiresAt y el usuario local. Un fallo de red o 500 no confirma la
+   revocación: mostrar el error y permitir reintentar. El token revocado devuelve 401;
+   otros tokens de la cuenta permanecen válidos.
 7. No hay refresh token: al expirar (por defecto 2 h) el usuario vuelve a iniciar sesion.
 
 Cada usuario solo ve sus propios eventos/subtareas/capacidad. Pedir un recurso de otro
@@ -267,6 +270,7 @@ Todas las rutas protegidas requieren `Authorization: Bearer <token>`.
 |---|---|---|---|---|---|
 | 🔓 | POST | `/api/auth/register` | `RegisterRequest` | **201** `AuthResponse` | 400, 409 |
 | 🔓 | POST | `/api/auth/login` | `LoginRequest` | 200 `AuthResponse` | 400, 401 |
+| 🔒 | POST | `/api/auth/logout` | - | 200 `null` | 401, 500 |
 | 🔒 | GET | `/api/auth/me` | - | 200 `UsuarioResponse` | 401 |
 | 🛡️ | GET | `/api/admin/users` | - | 200 `UsuarioResponse[]` | 401, 403 |
 | 🛡️ | GET | `/api/admin/users/{id}` | - | 200 `UsuarioResponse` | 401, 403, 404 |
@@ -345,6 +349,26 @@ Content-Type: application/json
   "timestamp": "2026-10-02T15:15:30.123Z"
 }
 ```
+
+### Logout
+
+```http
+POST /api/auth/logout
+Authorization: Bearer <accessToken>
+```
+
+```json
+{
+  "success": true,
+  "message": "Cerraste sesion correctamente.",
+  "data": null,
+  "timestamp": "2026-10-03T15:15:30Z"
+}
+```
+
+Se revoca el JWT utilizado. No enviar el token en un JSON ni en la URL. Después del cierre,
+el cliente borra su copia del token. Reutilizarlo, incluso en logout, devuelve 401.
+Ejemplos de errores en [auth.md](./auth.md).
 
 ### Login fallido
 
