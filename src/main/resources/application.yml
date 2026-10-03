@@ -26,6 +26,8 @@ spring:
         format_sql: true
         jdbc: { time_zone: America/Bogota }
   jackson:
+    deserialization:
+      fail-on-unknown-properties: true
     time-zone: America/Bogota
 
 springdoc:
@@ -40,5 +42,11 @@ springdoc:
   paths-to-match: /api/**
 
 management: { endpoints: { web: { exposure: { include: health,info } } } }
-app: { cors-origin: '${CORS_ORIGIN:http://localhost:4300,https://frontend-pi-olive-30.vercel.app}' }
+app:
+  cors-origin: '${CORS_ORIGIN:http://localhost:4200,https://frontend-pi-olive-30.vercel.app}'
+  security:
+    jwt:
+      secret: '${JWT_SECRET:dev-only-secret-change-me-please-32bytes-min!!}'
+      expiration-minutes: '${JWT_EXPIRATION_MINUTES:120}'
+      issuer: events-api
 server: { port: '${PORT:8080}' }

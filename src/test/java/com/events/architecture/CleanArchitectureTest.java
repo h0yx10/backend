@@ -39,6 +39,16 @@ class CleanArchitectureTest {
             .dependOnClassesThat()
             .resideInAPackage("..infrastructure..");
 
+    // Los casos de uso no conocen Spring (ni Spring Security): hash de passwords, emision de
+    // tokens y usuario actual llegan a traves de puertos de salida.
+    @ArchTest
+    static final ArchRule applicationDoesNotDependOnFrameworks = noClasses()
+            .that()
+            .resideInAPackage("..application..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("org.springframework..", "jakarta.servlet..", "com.nimbusds..");
+
     @ArchTest
     static final ArchRule inputAdaptersDoNotDependOnOutputAdapters = noClasses()
             .that()
@@ -76,6 +86,8 @@ class CleanArchitectureTest {
             .doNotHaveSimpleName("OverloadCheckResult")
             .and()
             .doNotHaveSimpleName("EventoProgress")
+            .and()
+            .doNotHaveSimpleName("AuthResult")
             .should()
             .beInterfaces();
 

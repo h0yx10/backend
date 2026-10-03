@@ -10,7 +10,10 @@ import java.util.UUID;
 public interface SubtareaRepositoryPort {
     Subtarea save(Subtarea subtarea);
 
-    Optional<Subtarea> findById(UUID id);
+    /**
+     * Devuelve la subtarea solo si pertenece a un evento del organizador indicado.
+     */
+    Optional<Subtarea> findByIdAndOrganizadorId(UUID id, UUID organizadorId);
 
     List<Subtarea> findByEventoId(UUID eventoId);
 

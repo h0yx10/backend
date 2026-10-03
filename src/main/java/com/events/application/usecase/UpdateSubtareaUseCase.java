@@ -1,6 +1,7 @@
 package com.events.application.usecase;
 
 import com.events.application.port.in.UpdateSubtareaPort;
+import com.events.application.port.out.CurrentOrganizadorPort;
 import com.events.application.port.out.CapacidadDiariaRepositoryPort;
 import com.events.application.port.out.SubtareaRepositoryPort;
 import com.events.domain.entity.CapacidadDiaria;
@@ -15,16 +16,19 @@ public class UpdateSubtareaUseCase implements UpdateSubtareaPort {
 
     private final SubtareaRepositoryPort subtareaRepository;
     private final CapacidadDiariaRepositoryPort capacidadDiariaRepository;
+    private final CurrentOrganizadorPort currentOrganizador;
 
     public UpdateSubtareaUseCase(SubtareaRepositoryPort subtareaRepository,
-                                  CapacidadDiariaRepositoryPort capacidadDiariaRepository) {
+                                  CapacidadDiariaRepositoryPort capacidadDiariaRepository,
+                                  CurrentOrganizadorPort currentOrganizador) {
         this.subtareaRepository = subtareaRepository;
         this.capacidadDiariaRepository = capacidadDiariaRepository;
+        this.currentOrganizador = currentOrganizador;
     }
 
     @Override
     public Subtarea execute(UUID subtareaId, String nombre, LocalDate fechaObjetivo, BigDecimal horasEstimadas) {
-        Subtarea subtarea = subtareaRepository.findById(subtareaId)
+        Subtarea subtarea = subtareaRepository.findByIdAndOrganizadorId(subtareaId, currentOrganizador.currentOrganizadorId())
                 .orElseThrow(() -> new SubtareaNotFoundException("No encontramos la subtarea solicitada."));
 
         boolean cambiaCarga = fechaObjetivo != null || horasEstimadas != null;

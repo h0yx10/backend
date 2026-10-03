@@ -19,16 +19,34 @@ Este proyecto es la refactorizacion de `Back-Task` para cumplir el backlog del m
 
 ## Alcance de esta version
 
-Cubre el backend de las historias US-01 a US-10 y US-12 con un **organizador demo** (modo
-Sprint 0-1 del mini-proyecto: sin login). US-11 (autenticacion) y TS-04 quedan para una fase
-posterior; el punto de extension ya existe (`CurrentOrganizadorPort` /
-`DemoOrganizadorProvider`), por lo que agregar login no requiere tocar los casos de uso.
+Cubre el backend de las historias US-01 a US-12. US-11 (autenticacion) usa Spring Security
+con JWT (Bearer, HS256): registro, login, roles (`ORGANIZADOR`, `ADMIN`) y rutas protegidas.
+Cada usuario solo ve y modifica sus propios eventos, subtareas y capacidad diaria.
+
+- Arquitectura: [docs/arquitectura.md](docs/arquitectura.md)
+- Esquema SQL (usuarios, roles y modelo de negocio): [docs/schema.sql](docs/schema.sql)
+- Contratos para el front (auth + todos los endpoints): [docs/contratos-frontend.md](docs/contratos-frontend.md)
 
 ## Requisitos
 
 - JDK 21
-- Maven 3.9 o una version posterior (o usa el `mvn` de tu IDE)
+- Maven Wrapper incluido (`mvnw`/`mvnw.cmd`), con Maven 3.9.16; no necesitas instalar Maven por separado.
 - Un proyecto de Supabase (o cualquier Postgres accesible)
+
+El wrapper descarga Maven en el primer uso. Para iniciar desde la carpeta `backend`:
+
+```bash
+./mvnw spring-boot:run
+```
+
+En Windows: `.\mvnw.cmd spring-boot:run`. Java debe estar disponible en PATH o mediante
+JAVA_HOME, y la base de datos debe tener el esquema indicado abajo. Si el wrapper indica
+que JAVA_HOME no está definido correctamente, configurar la carpeta del JDK antes de ejecutar:
+
+```bash
+export JAVA_HOME=/ruta/al/jdk
+./mvnw spring-boot:run
+```
 
 ## Configuracion
 
@@ -52,7 +70,7 @@ La aplicacion importa `.env` si existe. Tambien puedes exportar las variables an
 ```bash
 # bash
 set -a; source .env; set +a
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 ```powershell
@@ -60,13 +78,22 @@ mvn spring-boot:run
 Get-Content .env | ForEach-Object {
   if ($_ -match '^([^#=]+)=(.*)$') { [System.Environment]::SetEnvironmentVariable($matches[1], $matches[2]) }
 }
-mvn spring-boot:run
+.\mvnw.cmd spring-boot:run
 ```
 
-Al arrancar, la app crea (una sola vez) un organizador demo en la tabla `organizadores` y lo
-reutiliza en cada peticion; las tablas se crean/actualizan automaticamente
-(`spring.jpa.hibernate.ddl-auto=update`) sobre el esquema ya existente en Supabase
-(`organizadores`, `eventos`, `subtareas`, `capacidades_diarias`).
+Antes del primer despliegue ejecuta [docs/schema.sql](docs/schema.sql) en una **base nueva**
+de PostgreSQL/Supabase. Crea `usuarios`, `roles`, `usuario_roles`, `organizadores` con UUID
+propio y las tablas de negocio. No migra ni borra datos existentes. Hibernate usa
+`spring.jpa.hibernate.ddl-auto=validate`: verifica el esquema, no lo crea ni lo altera.
+Para habilitar el primer ADMIN, registra una cuenta y sigue el SQL comentado al final del
+script o [docs/auth.md](docs/auth.md).
+
+Variables de seguridad:
+
+| Variable | Valor predeterminado | Descripcion |
+|---|---|---|
+| `JWT_SECRET` | *(clave de desarrollo)* | Clave HS256 para firmar tokens, minimo 32 caracteres. **Obligatoria en produccion.** |
+| `JWT_EXPIRATION_MINUTES` | `120` | Vigencia del token de acceso. |
 
 ## Documentacion interactiva
 
@@ -90,10 +117,26 @@ Todas las respuestas exitosas usan el formato `{ success, message, data, timesta
 errores usan `{ success: false, message, timestamp }` (409 de conflicto de capacidad agrega
 ademas `plannedHours`, `limitHours`, `exceedsBy`).
 
+Todas las rutas `/api/**` exigen `Authorization: Bearer <token>`, excepto registro y login.
+Los permisos se consultan en BD en cada petición. Las rutas de negocio exigen ORGANIZADOR
+con perfil activo. El JWT identifica al usuario; el UUID del organizador es independiente.
+La eliminación devuelve 409 si existen eventos/capacidades o se trata del último ADMIN habilitado.
+
 | Metodo | Ruta | US | Descripcion |
 |---|---|---|---|
+| `POST` | `/api/auth/register` | US-11 | Publica. Crea un usuario (rol ORGANIZADOR) y devuelve su token. |
+| `POST` | `/api/auth/login` | US-11 | Publica. Devuelve un token de acceso. |
+| `POST` | `/api/auth/logout` | US-11 | Revoca el Bearer actual; el frontend borra su token local. |
+| `GET` | `/api/auth/me` | US-11 | Usuario dueno del token. |
+| `GET` | `/api/admin/users` | - | ADMIN: lista los usuarios. |
+| `GET` | `/api/admin/users/{id}` | - | ADMIN: consulta un usuario. |
+| `POST` | `/api/admin/users` | - | ADMIN: crea cuenta y roles, sin emitir token. |
+| `PATCH` | `/api/admin/users/{id}` | - | ADMIN: edita datos, roles y actividad del perfil. |
+| `DELETE` | `/api/admin/users/{id}` | - | ADMIN: elimina cuenta sin datos asociados. |
+| `PATCH` | `/api/auth/me` | - | Edita perfil propio; cambio de password exige passwordActual. |
+| `DELETE` | `/api/auth/me` | - | Elimina cuenta propia sin datos asociados. |
 | `POST` | `/api/events` | US-01, US-02 | Crea un evento y, opcionalmente, sus subtareas iniciales. |
-| `GET` | `/api/events` | US-01 | Lista los eventos del organizador demo. |
+| `GET` | `/api/events` | US-01 | Lista los eventos del usuario autenticado. |
 | `GET` | `/api/events/{id}` | US-01 | Consulta un evento con sus subtareas. |
 | `PATCH` | `/api/events/{id}` | US-03 | Actualiza los campos enviados de un evento. |
 | `DELETE` | `/api/events/{id}` | US-03 | Elimina un evento y sus subtareas (cascada). |
@@ -127,11 +170,24 @@ menos horas (reducir), que es la misma operacion sin conflicto.
 ## Pruebas y cobertura
 
 ```bash
-mvn verify
+./mvnw verify
 ```
 
 Ejecuta las pruebas unitarias (dominio y casos de uso), las reglas de ArchUnit y el chequeo de
 cobertura de JaCoCo. El reporte HTML se genera en `target/site/jacoco/index.html`.
+
+Para comprobar el SQL, JPA y flujos HTTP sobre PostgreSQL, crea una base **vacía y desechable**
+con nombre `events_test_*` y ejecuta:
+
+```bash
+TEST_DB_URL=jdbc:postgresql://localhost:5432/events_test_users \
+TEST_DB_USERNAME=postgres TEST_DB_PASSWORD=postgres ./mvnw -Ppostgres-it verify
+```
+
+Este perfil aplica `docs/schema.sql`, valida el modelo JPA y limpia los datos entre pruebas.
+Necesita una base vacía nueva en cada ejecución; no debe apuntar a la base de la aplicación.
+Las pruebas verifican aislamiento multiusuario, CRUD/perfil, roles actuales con JWT existente,
+contraseñas BCrypt, bloqueos de eliminación y concurrencia de registros/bajas de ADMIN.
 
 El umbral de cobertura (60% lineas / 50% ramas) aplica solo sobre dominio y capa de
 aplicacion (la logica de negocio real); DTOs, mappers, controladores, adaptadores de
@@ -156,7 +212,13 @@ ni Lombok.
 ## Docker
 
 ```bash
-mvn clean package
+./mvnw clean package
 docker build -t events-api .
 docker run --rm -p 8080:8080 --env-file .env events-api
 ```
+
+Para actualizar una base que ya usa el esquema actual, ejecutar
+[docs/migrations/001_logout.sql](docs/migrations/001_logout.sql) antes de desplegar logout.
+Las bases nuevas incluyen `tokens_revocados` en `docs/schema.sql`. El cierre de sesión
+invalida el JWT actual en BD, incluso tras reinicios y entre instancias; otros tokens siguen
+vigentes. Detalle y respuestas JSON en [docs/auth.md](docs/auth.md).

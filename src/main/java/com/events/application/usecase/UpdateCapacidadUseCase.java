@@ -36,7 +36,7 @@ public class UpdateCapacidadUseCase implements UpdateCapacidadPort {
         }
 
         Organizador organizador = organizadorRepository.findById(organizadorId)
-                .orElseThrow(() -> new OrganizadorNotFoundException("No encontramos el organizador demo."));
+                .orElseThrow(() -> new OrganizadorNotFoundException("No encontramos el usuario autenticado."));
         return capacidadDiariaRepository.save(new CapacidadDiaria(organizador, LocalDate.now(), limiteHoras));
     }
 }

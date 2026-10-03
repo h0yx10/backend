@@ -2,6 +2,7 @@ package com.events.application.usecase;
 
 import com.events.application.port.in.CheckOverloadConflictPort;
 import com.events.application.port.in.OverloadCheckResult;
+import com.events.application.port.out.CurrentOrganizadorPort;
 import com.events.application.port.out.CapacidadDiariaRepositoryPort;
 import com.events.application.port.out.SubtareaRepositoryPort;
 import com.events.domain.entity.CapacidadDiaria;
@@ -15,16 +16,19 @@ public class CheckOverloadConflictUseCase implements CheckOverloadConflictPort {
 
     private final SubtareaRepositoryPort subtareaRepository;
     private final CapacidadDiariaRepositoryPort capacidadDiariaRepository;
+    private final CurrentOrganizadorPort currentOrganizador;
 
     public CheckOverloadConflictUseCase(SubtareaRepositoryPort subtareaRepository,
-                                         CapacidadDiariaRepositoryPort capacidadDiariaRepository) {
+                                         CapacidadDiariaRepositoryPort capacidadDiariaRepository,
+                                         CurrentOrganizadorPort currentOrganizador) {
         this.subtareaRepository = subtareaRepository;
         this.capacidadDiariaRepository = capacidadDiariaRepository;
+        this.currentOrganizador = currentOrganizador;
     }
 
     @Override
     public OverloadCheckResult execute(UUID subtareaId, LocalDate nuevaFecha, BigDecimal nuevasHoras) {
-        Subtarea subtarea = subtareaRepository.findById(subtareaId)
+        Subtarea subtarea = subtareaRepository.findByIdAndOrganizadorId(subtareaId, currentOrganizador.currentOrganizadorId())
                 .orElseThrow(() -> new SubtareaNotFoundException("No encontramos la subtarea solicitada."));
 
         LocalDate fechaEfectiva = nuevaFecha != null ? nuevaFecha : subtarea.getFechaObjetivo();

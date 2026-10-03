@@ -5,9 +5,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface OrganizadorRepositoryPort {
-    Organizador save(Organizador organizador);
-
     Optional<Organizador> findById(UUID id);
-
-    Optional<Organizador> findByCorreo(String correo);
+    Optional<Organizador> findByUsuarioId(UUID usuarioId);
 }

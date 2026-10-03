@@ -8,6 +8,7 @@ import com.events.application.port.out.CapacidadDiariaRepositoryPort;
 import com.events.application.port.out.CurrentOrganizadorPort;
 import com.events.domain.entity.CapacidadDiaria;
 import com.events.domain.entity.Organizador;
+import com.events.domain.entity.Usuario;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -33,7 +34,7 @@ class GetCapacidadUseCaseTest {
     void devuelveLaCapacidadVigenteDelOrganizador() {
         UUID organizadorId = UUID.randomUUID();
         when(currentOrganizador.currentOrganizadorId()).thenReturn(organizadorId);
-        CapacidadDiaria capacidad = new CapacidadDiaria(new Organizador("Demo", "demo@x.com"), LocalDate.now(), BigDecimal.valueOf(8));
+        CapacidadDiaria capacidad = new CapacidadDiaria(new Organizador(new Usuario("Demo", "demo@x.com", "hash")), LocalDate.now(), BigDecimal.valueOf(8));
         when(capacidadDiariaRepository.findCurrentByOrganizadorId(organizadorId)).thenReturn(Optional.of(capacidad));
 
         assertThat(useCase.execute()).isSameAs(capacidad);

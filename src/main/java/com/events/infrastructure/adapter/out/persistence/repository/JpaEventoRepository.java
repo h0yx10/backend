@@ -15,8 +15,12 @@ public interface JpaEventoRepository extends JpaRepository<Evento, UUID> {
      * subtareas). Sin el fetch join, EventoRestMapper falla con LazyInitializationException al
      * recorrer evento.getSubtareas() fuera de la sesion de Hibernate que ya se cerro.
      */
-    @Query("SELECT DISTINCT e FROM Evento e LEFT JOIN FETCH e.subtareas WHERE e.id = :id")
-    Optional<Evento> findByIdWithSubtareas(@Param("id") UUID id);
+    @Query("SELECT DISTINCT e FROM Evento e LEFT JOIN FETCH e.subtareas "
+            + "WHERE e.id = :id AND e.organizador.id = :organizadorId")
+    Optional<Evento> findByIdAndOrganizadorIdWithSubtareas(@Param("id") UUID id,
+                                                           @Param("organizadorId") UUID organizadorId);
+
+    boolean existsByIdAndOrganizadorId(UUID id, UUID organizadorId);
 
     @Query("SELECT DISTINCT e FROM Evento e LEFT JOIN FETCH e.subtareas WHERE e.organizador.id = :organizadorId")
     List<Evento> findByOrganizadorIdWithSubtareas(@Param("organizadorId") UUID organizadorId);

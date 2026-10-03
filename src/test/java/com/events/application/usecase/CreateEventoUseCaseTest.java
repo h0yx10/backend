@@ -11,6 +11,7 @@ import com.events.application.port.out.CurrentOrganizadorPort;
 import com.events.application.port.out.EventoRepositoryPort;
 import com.events.application.port.out.OrganizadorRepositoryPort;
 import com.events.domain.entity.Organizador;
+import com.events.domain.entity.Usuario;
 import com.events.domain.exception.OrganizadorNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -31,7 +32,7 @@ class CreateEventoUseCaseTest {
     void creaElEventoConSusSubtareasIniciales() {
         UUID organizadorId = UUID.randomUUID();
         when(currentOrganizador.currentOrganizadorId()).thenReturn(organizadorId);
-        when(organizadorRepository.findById(organizadorId)).thenReturn(Optional.of(new Organizador("Demo", "demo@x.com")));
+        when(organizadorRepository.findById(organizadorId)).thenReturn(Optional.of(new Organizador(new Usuario("Demo", "demo@x.com", "hash"))));
         when(eventoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         var subtareas = List.of(new NuevaSubtareaData("Reservar salon", LocalDate.now().plusDays(1), BigDecimal.valueOf(2)));
@@ -43,7 +44,7 @@ class CreateEventoUseCaseTest {
     }
 
     @Test
-    void fallaSiElOrganizadorDemoNoExiste() {
+    void fallaSiElUsuarioAutenticadoNoExiste() {
         UUID organizadorId = UUID.randomUUID();
         when(currentOrganizador.currentOrganizadorId()).thenReturn(organizadorId);
         when(organizadorRepository.findById(organizadorId)).thenReturn(Optional.empty());
