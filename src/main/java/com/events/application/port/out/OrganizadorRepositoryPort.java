@@ -6,4 +6,5 @@ import java.util.UUID;
 
 public interface OrganizadorRepositoryPort {
     Optional<Organizador> findById(UUID id);
+    Optional<Organizador> findByUsuarioId(UUID usuarioId);
 }

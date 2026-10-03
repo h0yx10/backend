@@ -25,9 +25,13 @@ public record RegisterRequest(
         @Size(max = 180, message = CORREO_INVALID)
         String correo,
 
-        @Schema(example = "Secreta123", description = "Entre 8 y 72 caracteres")
+        @Schema(example = "Secreta123", description = "Al menos 8 caracteres y hasta 72 bytes UTF-8")
         @NotBlank(message = PASSWORD_REQUIRED)
-        @Size(min = 8, max = 72, message = PASSWORD_LENGTH)
+        @Size(min = 8, message = PASSWORD_LENGTH)
         String password
 ) {
+    public RegisterRequest {
+        nombre = nombre == null ? null : nombre.trim();
+        correo = correo == null ? null : correo.trim();
+    }
 }

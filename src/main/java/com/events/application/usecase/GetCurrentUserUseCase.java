@@ -1,25 +1,25 @@
 package com.events.application.usecase;
 
 import com.events.application.port.in.GetCurrentUserPort;
-import com.events.application.port.out.CurrentOrganizadorPort;
+import com.events.application.port.out.CurrentUsuarioPort;
 import com.events.application.port.out.UsuarioRepositoryPort;
 import com.events.domain.entity.Usuario;
-import com.events.domain.exception.OrganizadorNotFoundException;
+import com.events.domain.exception.CredencialesInvalidasException;
 
 public class GetCurrentUserUseCase implements GetCurrentUserPort {
 
     private final UsuarioRepositoryPort usuarioRepository;
-    private final CurrentOrganizadorPort currentOrganizador;
+    private final CurrentUsuarioPort currentUsuario;
 
     public GetCurrentUserUseCase(UsuarioRepositoryPort usuarioRepository,
-                                 CurrentOrganizadorPort currentOrganizador) {
+                                 CurrentUsuarioPort currentUsuario) {
         this.usuarioRepository = usuarioRepository;
-        this.currentOrganizador = currentOrganizador;
+        this.currentUsuario = currentUsuario;
     }
 
     @Override
     public Usuario execute() {
-        return usuarioRepository.findById(currentOrganizador.currentOrganizadorId())
-                .orElseThrow(() -> new OrganizadorNotFoundException("No encontramos el usuario autenticado."));
+        return usuarioRepository.findById(currentUsuario.currentUsuarioId())
+                .orElseThrow(() -> new CredencialesInvalidasException("No encontramos el usuario autenticado."));
     }
 }

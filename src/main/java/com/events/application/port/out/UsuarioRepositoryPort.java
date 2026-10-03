@@ -15,4 +15,8 @@ public interface UsuarioRepositoryPort {
     boolean existsByCorreo(String correo);
 
     List<Usuario> findAll();
+    Optional<Usuario> findByIdForUpdate(UUID id);
+    long countActiveAdmins();
+    boolean hasBusinessData(UUID usuarioId);
+    void delete(Usuario usuario);
 }

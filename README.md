@@ -66,10 +66,12 @@ Get-Content .env | ForEach-Object {
 mvn spring-boot:run
 ```
 
-Antes del primer despliegue con login ejecuta [docs/schema.sql](docs/schema.sql) en el SQL
-Editor de Supabase (agrega columnas de autenticacion, `usuarios`, `roles`, `organizador_roles` e indices).
-Las tablas tambien se crean/actualizan automaticamente (`spring.jpa.hibernate.ddl-auto=update`)
-sobre el esquema existente (`organizadores` pasa a ser solo `usuario_id` + `activo`; nombre/correo/password se mueven a `usuarios`; `eventos`, `subtareas`, `capacidades_diarias`).
+Antes del primer despliegue ejecuta [docs/schema.sql](docs/schema.sql) en una **base nueva**
+de PostgreSQL/Supabase. Crea `usuarios`, `roles`, `usuario_roles`, `organizadores` con UUID
+propio y las tablas de negocio. No migra ni borra datos existentes. Hibernate usa
+`spring.jpa.hibernate.ddl-auto=validate`: verifica el esquema, no lo crea ni lo altera.
+Para habilitar el primer ADMIN, registra una cuenta y sigue el SQL comentado al final del
+script o [docs/auth.md](docs/auth.md).
 
 Variables de seguridad:
 
@@ -92,13 +94,22 @@ errores usan `{ success: false, message, timestamp }` (409 de conflicto de capac
 ademas `plannedHours`, `limitHours`, `exceedsBy`).
 
 Todas las rutas `/api/**` exigen `Authorization: Bearer <token>`, excepto registro y login.
+Los permisos se consultan en BD en cada petición. Las rutas de negocio exigen ORGANIZADOR
+con perfil activo. El JWT identifica al usuario; el UUID del organizador es independiente.
+La eliminación devuelve 409 si existen eventos/capacidades o se trata del último ADMIN habilitado.
 
 | Metodo | Ruta | US | Descripcion |
 |---|---|---|---|
 | `POST` | `/api/auth/register` | US-11 | Publica. Crea un usuario (rol ORGANIZADOR) y devuelve su token. |
 | `POST` | `/api/auth/login` | US-11 | Publica. Devuelve un token de acceso. |
 | `GET` | `/api/auth/me` | US-11 | Usuario dueno del token. |
-| `GET` | `/api/admin/users` | - | Solo rol ADMIN. Lista los usuarios. |
+| `GET` | `/api/admin/users` | - | ADMIN: lista los usuarios. |
+| `GET` | `/api/admin/users/{id}` | - | ADMIN: consulta un usuario. |
+| `POST` | `/api/admin/users` | - | ADMIN: crea cuenta y roles, sin emitir token. |
+| `PATCH` | `/api/admin/users/{id}` | - | ADMIN: edita datos, roles y actividad del perfil. |
+| `DELETE` | `/api/admin/users/{id}` | - | ADMIN: elimina cuenta sin datos asociados. |
+| `PATCH` | `/api/auth/me` | - | Edita perfil propio; cambio de password exige passwordActual. |
+| `DELETE` | `/api/auth/me` | - | Elimina cuenta propia sin datos asociados. |
 | `POST` | `/api/events` | US-01, US-02 | Crea un evento y, opcionalmente, sus subtareas iniciales. |
 | `GET` | `/api/events` | US-01 | Lista los eventos del usuario autenticado. |
 | `GET` | `/api/events/{id}` | US-01 | Consulta un evento con sus subtareas. |
@@ -139,6 +150,19 @@ mvn verify
 
 Ejecuta las pruebas unitarias (dominio y casos de uso), las reglas de ArchUnit y el chequeo de
 cobertura de JaCoCo. El reporte HTML se genera en `target/site/jacoco/index.html`.
+
+Para comprobar el SQL, JPA y flujos HTTP sobre PostgreSQL, crea una base **vacía y desechable**
+con nombre `events_test_*` y ejecuta:
+
+```bash
+TEST_DB_URL=jdbc:postgresql://localhost:5432/events_test_users \
+TEST_DB_USERNAME=postgres TEST_DB_PASSWORD=postgres mvn -Ppostgres-it verify
+```
+
+Este perfil aplica `docs/schema.sql`, valida el modelo JPA y limpia los datos entre pruebas.
+Necesita una base vacía nueva en cada ejecución; no debe apuntar a la base de la aplicación.
+Las pruebas verifican aislamiento multiusuario, CRUD/perfil, roles actuales con JWT existente,
+contraseñas BCrypt, bloqueos de eliminación y concurrencia de registros/bajas de ADMIN.
 
 El umbral de cobertura (60% lineas / 50% ramas) aplica solo sobre dominio y capa de
 aplicacion (la logica de negocio real); DTOs, mappers, controladores, adaptadores de

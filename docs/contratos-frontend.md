@@ -1,6 +1,7 @@
 # Contratos API para el cliente front - events-api
 
-Referencia completa para que el front se autentique y consuma la API. Para el detalle por
+Referencia completa para que el front se autentique y consuma la API.
+Tipos exportados listos para copiar al frontend: [api-contracts.ts](./api-contracts.ts). Para el detalle por
 recurso ver los demas archivos de `docs/`; Swagger en `/swagger-ui.html` (boton **Authorize**
 para pegar el token).
 
@@ -25,27 +26,28 @@ para pegar el token).
    ```
 4. Al recargar la app: si hay token no expirado, llama a `GET /api/auth/me` para restaurar el
    usuario. Si responde `401`, borra el token y manda a login.
-5. Cualquier `401` en una ruta protegida = sesion expirada o token invalido → borrar token y
-   redirigir a login. Un `403` = el usuario no tiene el rol (no cerrar sesion).
+5. Un `401` normalmente indica sesion invalida. Al cambiar la contraseña propia, también
+   puede indicar `passwordActual` incorrecta: consulta `GET /api/auth/me`; si devuelve 200,
+   conserva la sesion y muestra el error del formulario; si devuelve 401, borra el token
+   y redirige a login. Un `403` indica falta de permisos y no debe cerrar la sesion.
 6. Logout: borrar el token en el cliente (no hay endpoint de logout; el token es stateless).
 7. No hay refresh token: al expirar (por defecto 2 h) el usuario vuelve a iniciar sesion.
 
 Cada usuario solo ve sus propios eventos/subtareas/capacidad. Pedir un recurso de otro
 usuario devuelve `404`.
 
-### Cambio de modelo de datos (sin cambios en el JSON)
+### Modelo de datos e identidad
 
-El backend separo la cuenta de login del perfil de organizador:
-
-- `usuarios`: `id`, `nombre`, `correo`, `password_hash`, `created_at` .
-- `organizadores`: solo `usuario_id` (PK y FK a `usuarios.id`, relacion 1 a 1) y `activo`.
-- `organizador_roles`: `usuario_id` (FK a `organizadores.usuario_id`) + `rol_id`. Los roles se leen del organizador.
-
-Los endpoints, requests y responses **no cambian**: `POST /api/auth/register` ahora guarda
-nombre, correo y password en `usuarios` y crea el perfil en `organizadores`. Como el id del
-organizador es el mismo del usuario, `UsuarioResponse.id`, `EventoResponse.organizadorId` y el
-`sub` del JWT siguen coincidiendo. Un login de cuenta con `organizadores.activo = false` responde
-`401` igual que una contrasena incorrecta.
+- `usuarios`: cuenta de login; el `sub` del JWT y `UsuarioResponse.id` identifican esta tabla.
+- `organizadores`: `id` independiente, `usuario_id` único como FK a usuarios y `activo`.
+- `usuario_roles`: roles asociados directamente a usuarios.
+- `UsuarioResponse.organizadorId` identifica el perfil o es null. `EventoResponse.organizadorId`
+  identifica ese perfil, no la cuenta.
+- El backend consulta roles y actividad en BD con cada petición; un cambio aplica incluso
+  a JWT emitidos antes. Consultar `/me` para actualizar la información que muestra el cliente.
+- Negocio exige ORGANIZADOR y perfil activo; ADMIN solo no obtiene acceso a eventos.
+- PATCH rechaza propiedades desconocidas. Las bajas devuelven 409 si hay datos asociados
+  o se intenta dejar el sistema sin ADMIN habilitado.
 
 ---
 
@@ -79,10 +81,10 @@ interface CapacityConflictError extends ApiError {
 |---|---|---|
 | 200 / 201 | OK | usar `data` |
 | 400 | validacion o JSON mal formado | mostrar `message` en el formulario |
-| 401 | sin token, token invalido/expirado, o login fallido | en login: mostrar `message`; en otra ruta: cerrar sesion |
+| 401 | token invalido/expirado, login fallido o contraseña actual incorrecta | login: mostrar error; cambio de contraseña: confirmar sesion con GET `/api/auth/me`; otras rutas: cerrar sesion |
 | 403 | rol insuficiente | mostrar "sin permisos" |
 | 404 | no existe o no es del usuario | mostrar "no encontrado" |
-| 409 | correo ya registrado / sobrecarga diaria | mostrar `message` (y datos extra si es capacidad) |
+| 409 | correo ya registrado / sobrecarga / baja con dependencias / último ADMIN | mostrar `message` (y datos extra si es capacidad) |
 | 500 | error inesperado | mensaje generico |
 
 ---
@@ -101,7 +103,7 @@ type EstadoSubtarea = 'PENDING' | 'DONE' | 'POSTPONED';
 interface RegisterRequest {
   nombre: string;    // requerido, max 120
   correo: string;    // requerido, email valido, max 180
-  password: string;  // requerido, 8..72 caracteres
+  password: string;  // requerido, mínimo 8 caracteres Unicode y máximo 72 bytes UTF-8
 }
 
 interface LoginRequest {
@@ -109,14 +111,15 @@ interface LoginRequest {
   password: string;
 }
 
-// Viene de la tabla `usuarios` (login). `id` es tambien el id del organizador.
+// Cuenta y perfil tienen UUID independientes.
 interface UsuarioResponse {
-  id: UUID;            // = usuarios.id = organizadores.usuario_id = claim `sub` del JWT
+  id: UUID;            // usuarios.id = sub del JWT
+  organizadorId: UUID | null; // organizadores.id, independiente del usuario
   nombre: string;
   correo: string;
-  roles: Rol[];    // de organizador_roles
-  activo: boolean;     // organizadores.activo
-  createdAt: DateTimeISO | null;
+  roles: Rol[];    // de usuario_roles
+  activo: boolean;     // organizadores.activo; true si no tiene perfil
+  createdAt: DateTimeISO;
 }
 
 interface AuthResponse {
@@ -124,6 +127,20 @@ interface AuthResponse {
   tokenType: 'Bearer';
   expiresIn: number;   // segundos
   usuario: UsuarioResponse;
+}
+
+interface CreateUsuarioRequest extends RegisterRequest {
+  roles?: Rol[]; // no vacío; por defecto ORGANIZADOR; solo POST administrativo
+}
+interface UpdatePerfilRequest {
+  nombre?: string;
+  correo?: string;
+  password?: string;
+  passwordActual?: string; // obligatoria al cambiar contraseña propia
+}
+interface UpdateUsuarioRequest extends UpdatePerfilRequest {
+  roles?: Rol[]; // reemplaza la lista, solo ADMIN
+  activo?: boolean; // solo ADMIN, requiere perfil
 }
 
 // ---------- Eventos ----------
@@ -164,7 +181,7 @@ interface EventoResponse {
   fechaHora: DateTimeISO;
   lugar: string | null;
   plazoLimite: DateTimeISO | null;
-  organizadorId: UUID;         // siempre el usuario autenticado (= UsuarioResponse.id)
+  organizadorId: UUID;         // perfil del usuario autenticado (= UsuarioResponse.organizadorId)
   subtareas: SubtareaResponse[];
 }
 
@@ -241,7 +258,8 @@ interface TodayResponse {
 
 ## 4. Endpoints
 
-🔓 = publico · 🔒 = requiere `Authorization: Bearer` · 🛡️ = requiere rol ADMIN
+🔓 = publico · 🔒 = cuenta autenticada · 🛡️ = ADMIN · 📅 = ORGANIZADOR y perfil activo.
+Todas las rutas protegidas requieren `Authorization: Bearer <token>`.
 
 ### Autenticacion
 
@@ -251,41 +269,47 @@ interface TodayResponse {
 | 🔓 | POST | `/api/auth/login` | `LoginRequest` | 200 `AuthResponse` | 400, 401 |
 | 🔒 | GET | `/api/auth/me` | - | 200 `UsuarioResponse` | 401 |
 | 🛡️ | GET | `/api/admin/users` | - | 200 `UsuarioResponse[]` | 401, 403 |
+| 🛡️ | GET | `/api/admin/users/{id}` | - | 200 `UsuarioResponse` | 401, 403, 404 |
+| 🛡️ | POST | `/api/admin/users` | `CreateUsuarioRequest` | 201 `UsuarioResponse` | 400, 401, 403, 409 |
+| 🛡️ | PATCH | `/api/admin/users/{id}` | `UpdateUsuarioRequest` | 200 `UsuarioResponse` | 400, 401, 403, 404, 409 |
+| 🛡️ | DELETE | `/api/admin/users/{id}` | - | 200 `null` | 401, 403, 404, 409 |
+| 🔒 | PATCH | `/api/auth/me` | `UpdatePerfilRequest` | 200 `UsuarioResponse` | 400, 401, 409 |
+| 🔒 | DELETE | `/api/auth/me` | - | 200 `null` | 401, 409 |
 
 ### Eventos
 
 | | Metodo | Ruta | Body | Respuesta `data` | Errores |
 |---|---|---|---|---|---|
-| 🔒 | GET | `/api/events` | - | 200 `EventoResponse[]` | 401 |
-| 🔒 | GET | `/api/events/{id}` | - | 200 `EventoResponse` | 401, 404 |
-| 🔒 | POST | `/api/events` | `CreateEventoRequest` | **201** `EventoResponse` | 400, 401 |
-| 🔒 | PATCH | `/api/events/{id}` | `UpdateEventoRequest` | 200 `EventoResponse` | 400, 401, 404 |
-| 🔒 | DELETE | `/api/events/{id}` | - | 200 `null` (borra sus subtareas) | 401, 404 |
-| 🔒 | GET | `/api/events/{id}/progress` | - | 200 `ProgressResponse` | 401, 404 |
+| 📅 | GET | `/api/events` | - | 200 `EventoResponse[]` | 400, 401, 403 |
+| 📅 | GET | `/api/events/{id}` | - | 200 `EventoResponse` | 400, 401, 403, 404 |
+| 📅 | POST | `/api/events` | `CreateEventoRequest` | **201** `EventoResponse` | 400, 401, 403 |
+| 📅 | PATCH | `/api/events/{id}` | `UpdateEventoRequest` | 200 `EventoResponse` | 400, 401, 403, 404 |
+| 📅 | DELETE | `/api/events/{id}` | - | 200 `null` (borra sus subtareas) | 400, 401, 403, 404 |
+| 📅 | GET | `/api/events/{id}/progress` | - | 200 `ProgressResponse` | 400, 401, 403, 404 |
 
 ### Subtareas
 
 | | Metodo | Ruta | Body | Respuesta `data` | Errores |
 |---|---|---|---|---|---|
-| 🔒 | POST | `/api/events/{eventId}/subtasks` | `CreateSubtareaRequest` | **201** `SubtareaResponse` | 400, 401, 404 |
-| 🔒 | GET | `/api/events/{eventId}/subtasks` | - | 200 `SubtareaResponse[]` | 401, 404 |
-| 🔒 | PATCH | `/api/subtasks/{id}` | `UpdateSubtareaRequest` | 200 `SubtareaResponse` | 400, 401, 404, **409** `CapacityConflictError` |
-| 🔒 | PATCH | `/api/subtasks/{id}/status` | `ChangeSubtareaStatusRequest` | 200 `SubtareaResponse` | 400, 401, 404 |
-| 🔒 | DELETE | `/api/subtasks/{id}` | - | 200 `null` | 401, 404 |
-| 🔒 | POST | `/api/subtasks/{id}/conflicts/overload` | `OverloadCheckRequest` | 200 `OverloadCheckResponse` (no guarda) | 401, 404 |
+| 📅 | POST | `/api/events/{eventId}/subtasks` | `CreateSubtareaRequest` | **201** `SubtareaResponse` | 400, 401, 403, 404 |
+| 📅 | GET | `/api/events/{eventId}/subtasks` | - | 200 `SubtareaResponse[]` | 400, 401, 403, 404 |
+| 📅 | PATCH | `/api/subtasks/{id}` | `UpdateSubtareaRequest` | 200 `SubtareaResponse` | 400, 401, 403, 404, **409** `CapacityConflictError` |
+| 📅 | PATCH | `/api/subtasks/{id}/status` | `ChangeSubtareaStatusRequest` | 200 `SubtareaResponse` | 400, 401, 403, 404 |
+| 📅 | DELETE | `/api/subtasks/{id}` | - | 200 `null` | 400, 401, 403, 404 |
+| 📅 | POST | `/api/subtasks/{id}/conflicts/overload` | `OverloadCheckRequest` | 200 `OverloadCheckResponse` (no guarda) | 400, 401, 403, 404 |
 
 ### Capacidad diaria
 
 | | Metodo | Ruta | Body | Respuesta `data` | Errores |
 |---|---|---|---|---|---|
-| 🔒 | GET | `/api/capacity` | - | 200 `CapacidadResponse` | 401 |
-| 🔒 | PUT | `/api/capacity` | `CapacidadRequest` | 200 `CapacidadResponse` | 400, 401 |
+| 📅 | GET | `/api/capacity` | - | 200 `CapacidadResponse` | 400, 401, 403 |
+| 📅 | PUT | `/api/capacity` | `CapacidadRequest` | 200 `CapacidadResponse` | 400, 401, 403 |
 
 ### Vista Hoy
 
 | | Metodo | Ruta | Query | Respuesta `data` | Errores |
 |---|---|---|---|---|---|
-| 🔒 | GET | `/api/today` | `eventId?: UUID`, `status?: EstadoSubtarea` | 200 `TodayResponse` | 401 |
+| 📅 | GET | `/api/today` | `eventId?: UUID`, `status?: EstadoSubtarea` | 200 `TodayResponse` | 400, 401, 403 |
 
 ---
 
@@ -310,6 +334,7 @@ Content-Type: application/json
     "expiresIn": 7200,
     "usuario": {
       "id": "6f1c1f5e-7d0a-4c55-9a43-2b9f0f1e9c11",
+      "organizadorId": "2b8639f5-d7d4-4805-a1c5-4fb72b018084",
       "nombre": "Camila Restrepo",
       "correo": "camila@correo.com",
       "roles": ["ORGANIZADOR"],
@@ -378,7 +403,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authReq).pipe(
     catchError((err: HttpErrorResponse) => {
-      if (err.status === 401 && !isPublic) {
+      const path = new URL(req.url, window.location.origin).pathname;
+      const passwordUpdate = req.method === 'PATCH' &&
+        (path === '/api/auth/me' || path.startsWith('/api/admin/users/'));
+      // En passwordUpdate, el servicio consulta GET /api/auth/me para distinguir
+      // contraseña actual incorrecta (200) de sesión inválida (401).
+      if (err.status === 401 && !isPublic && !passwordUpdate) {
         localStorage.removeItem('accessToken');
         router.navigate(['/login']);
       }
@@ -419,7 +449,12 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   });
   const body = await res.json();
   if (!res.ok) {
-    if (res.status === 401 && !path.startsWith('/api/auth/')) {
+    const pathname = path.split('?')[0];
+    const isPublic = ['/api/auth/login', '/api/auth/register'].includes(pathname);
+    const passwordUpdate = init.method?.toUpperCase() === 'PATCH' &&
+      (pathname === '/api/auth/me' || pathname.startsWith('/api/admin/users/'));
+    // En passwordUpdate, el servicio confirma la sesión con GET /api/auth/me.
+    if (res.status === 401 && !isPublic && !passwordUpdate) {
       localStorage.removeItem('accessToken');
       location.href = '/login';
     }
@@ -434,3 +469,29 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 - Rutas privadas: exigir `isLoggedIn()`; si no, redirigir a `/login`.
 - Rutas de administracion: exigir `usuario.roles.includes('ADMIN')` (el backend igual devuelve
   403 si no lo tiene; el guard es solo para UX).
+
+## Notas de edición y eliminación
+
+Los campos opcionales omitidos o null conservan su valor. PATCH propio no admite `roles` ni
+`activo`. Al cambiar la contraseña propia se exige `passwordActual`, también si ADMIN usa
+la ruta administrativa sobre su misma cuenta. ADMIN puede restablecer contraseñas ajenas.
+Cambiar password mantiene los JWT ya emitidos hasta su expiración.
+
+DELETE elimina cuenta/perfil/asignaciones solo cuando no hay eventos ni capacidades.
+Si devuelve 409, mostrar el mensaje y conservar la sesión. Tras DELETE propio exitoso,
+eliminar el token y volver a login. El último ADMIN habilitado no puede ser eliminado,
+desactivado ni perder su rol.
+
+## Validaciones para formularios
+
+- Cuenta: nombre obligatorio hasta 120; correo válido hasta 180; password mínimo 8
+  caracteres Unicode y máximo 72 bytes UTF-8 (`new TextEncoder().encode(password).length`).
+- Roles: ADMIN y ORGANIZADOR, lista no vacía. El registro público no admite roles.
+- Evento: nombre, tipo y fechaHora obligatorios. Respetar los tamaños de almacenamiento:
+  nombre 180, tipo 100, cliente/contactoCliente 180, lugar 240 caracteres.
+- Subtarea: nombre, fechaObjetivo y horasEstimadas obligatorios; horas > 0. Respetar nombre
+  hasta 180 y nota hasta 1000 caracteres. Horas y capacidad se almacenan con dos decimales.
+- Capacidad: limiteHoras obligatorio entre 1 y 16 inclusive.
+- Estado: PENDING, DONE o POSTPONED. Vista Hoy excluye DONE, incluso usando status=DONE.
+- No enviar organizadorId ni usuarioId al crear eventos o capacidades: el backend
+  resuelve la pertenencia desde la cuenta autenticada. No enviar campos desconocidos.

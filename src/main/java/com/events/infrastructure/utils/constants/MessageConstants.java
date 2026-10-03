@@ -33,7 +33,7 @@ public final class MessageConstants {
     public static final String CORREO_REQUIRED = "Escribe tu correo.";
     public static final String CORREO_INVALID = "Escribe un correo valido.";
     public static final String PASSWORD_REQUIRED = "Escribe tu contrasena.";
-    public static final String PASSWORD_LENGTH = "La contrasena debe tener entre 8 y 72 caracteres.";
+    public static final String PASSWORD_LENGTH = "La contrasena debe tener al menos 8 caracteres y un maximo de 72 bytes UTF-8.";
     public static final String NOMBRE_MAX_LENGTH = "El nombre puede tener maximo 180 caracteres.";
     public static final String TIPO_REQUIRED = "Selecciona un tipo de evento.";
     public static final String FECHA_HORA_REQUIRED = "Indica la fecha y hora del evento.";

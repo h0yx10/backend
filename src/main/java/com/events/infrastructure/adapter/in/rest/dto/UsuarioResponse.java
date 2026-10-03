@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record UsuarioResponse(
         UUID id,
+        UUID organizadorId,
         String nombre,
         String correo,
         List<String> roles,

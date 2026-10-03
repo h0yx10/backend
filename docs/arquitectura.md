@@ -39,10 +39,10 @@ Las dependencias siempre apuntan hacia adentro: `infrastructure → application 
 | `com.events.domain.exception` | Excepciones de negocio (`EventoNotFoundException`, `CapacityConflictException`, `CorreoYaRegistradoException`, `CredencialesInvalidasException`, ...). | nada |
 | `com.events.application.port.in` | Un puerto (interfaz) por caso de uso: `CreateEventoPort`, `LoginPort`, `RegisterPort`, ... y records de resultado (`AuthResult`, `TodayGroups`, ...). | domain |
 | `com.events.application.usecase` | Implementacion de cada caso de uso. Java puro, sin anotaciones de Spring. | domain, ports |
-| `com.events.application.port.out` | Lo que los casos de uso necesitan del exterior: repositorios, `CurrentOrganizadorPort`, `PasswordHasherPort`, `TokenProviderPort`. | domain |
+| `com.events.application.port.out` | Lo que los casos de uso necesitan del exterior: repositorios, `CurrentUsuarioPort`, `CurrentOrganizadorPort`, `TransactionPort`, `PasswordHasherPort`, `TokenProviderPort`. | domain |
 | `com.events.infrastructure.adapter.in.rest` | Adaptador de entrada HTTP: controllers, DTOs (request/response), mappers, `GlobalExceptionHandler`. | application.port.in, domain |
 | `com.events.infrastructure.adapter.out.persistence` | Adaptadores de salida JPA (`*PersistenceAdapter`) sobre repositorios Spring Data (`Jpa*Repository`). | application.port.out, domain |
-| `com.events.infrastructure.security` | Spring Security: `SecurityConfig` (rutas protegidas, JWT), `JwtTokenProviderAdapter`, `BCryptPasswordHasherAdapter`, `SecurityContextCurrentOrganizadorAdapter`, `RestAuthenticationErrorHandler`. | application.port.out, domain |
+| `com.events.infrastructure.security` | Spring Security: `SecurityConfig` (rutas protegidas, JWT), `JwtTokenProviderAdapter`, `BCryptPasswordHasherAdapter`, `SecurityContextCurrentUsuarioAdapter`, `SecurityContextCurrentOrganizadorAdapter`, `DatabaseJwtAuthenticationConverter`, `RestAuthenticationErrorHandler`. | application.port.out, domain |
 | `com.events.infrastructure.config` | Wiring: `UseCaseConfig` crea los beans de casos de uso; `CorsConfig`; `OpenApiConfig`. | todo |
 
 ## Reglas verificadas por ArchUnit
@@ -66,11 +66,14 @@ Ejemplo: `GET /api/events/{id}` con `Authorization: Bearer <jwt>`.
 
 1. **Spring Security** (`SecurityConfig`): el resource server valida firma HS256, `iss` y `exp`
    del JWT. Si falta o es invalido → `RestAuthenticationErrorHandler` responde `401` JSON.
-   Si la ruta es `/api/admin/**` y el token no trae `ROLE_ADMIN` → `403`.
-2. El `Jwt` queda en el `SecurityContext`; el claim `roles` se convierte en `ROLE_*`.
+   Si la ruta es `/api/admin/**` y la cuenta no tiene ADMIN actualmente → `403`.
+   Las rutas de negocio requieren ORGANIZADOR y perfil activo.
+2. `DatabaseJwtAuthenticationConverter` consulta la cuenta, rechaza cuentas eliminadas/inactivas
+   y crea las autoridades `ROLE_*` desde los roles actuales en BD. El `Jwt` queda en el contexto.
 3. **`EventoController`** (adaptador de entrada) llama a `GetEventoPort.execute(id)`.
-4. **`GetEventoUseCase`** pide el usuario actual a `CurrentOrganizadorPort` (implementado por
-   `SecurityContextCurrentOrganizadorAdapter`, que lee el `sub` del JWT) y busca con
+4. **`GetEventoUseCase`** pide el organizador actual a `CurrentOrganizadorPort` (implementado por
+   `SecurityContextCurrentOrganizadorAdapter`, que busca `organizadores.usuario_id`
+   usando el `sub` del JWT) y busca con
    `EventoRepositoryPort.findByIdAndOrganizadorId(id, organizadorId)`.
 5. **`EventoPersistenceAdapter`** ejecuta la consulta JPA filtrando por `organizador_id`.
    Si el evento es de otro usuario no se encuentra → `EventoNotFoundException` → `404`.
@@ -83,7 +86,8 @@ POST /api/auth/register ─► AuthController ─► RegisterPort (RegisterUseCa
                                                ├─ UsuarioRepositoryPort.existsByCorreo      (409 si existe)
                                                ├─ RolRepositoryPort.findByNombre(ORGANIZADOR)
                                                ├─ PasswordHasherPort.hash      ◄── BCryptPasswordHasherAdapter
-                                               ├─ UsuarioRepositoryPort.save  (crea usuario + perfil organizador en cascada)
+                                               ├─ TransactionPort: save de usuario + perfil + usuario_roles
+                                               │  (TransactionTemplate en infraestructura; commit antes del JWT)
                                                └─ TokenProviderPort.generate   ◄── JwtTokenProviderAdapter (Nimbus)
 
 POST /api/auth/login ─► AuthController ─► LoginPort (LoginUseCase)
@@ -97,17 +101,13 @@ opacos = escribir otro adaptador, sin tocar `application`.
 
 ## Propiedad de los datos (multiusuario)
 
-- `usuarios` registra el login (nombre, correo, password_hash, created_at). `organizadores` es el
-  perfil de organizador: solo `usuario_id` (PK y FK hacia `usuarios.id`) y `activo` (relacion 1 a 1, opcional
-  para el usuario, obligatoria para el organizador); comparte
-  el id del usuario, por eso el `sub` del JWT es a la vez el id de usuario y de organizador.
-  Los roles cuelgan de `organizadores` (`organizador_roles.usuario_id` -> `organizadores.usuario_id`);
-  un usuario sin fila en `organizadores` no tiene roles ni eventos. Nombre y correo de un
-  organizador se leen por la relacion con `usuarios` (`Organizador.getNombre()/getCorreo()`).
-  Cada organizador es dueno de:
-  - sus `eventos` (`eventos.organizador_id`),
-  - las `subtareas` de esos eventos (via `subtareas.evento_id`),
-  - su `capacidades_diarias` (`capacidades_diarias.organizador_id`).
+- `usuarios` guarda credenciales y tiene sus roles mediante `usuario_roles`. El perfil opcional
+  `organizadores` tiene `id` propio, `usuario_id` único y `activo`. Eventos y capacidades
+  referencian `organizadores.id`. `CurrentUsuarioPort` devuelve el `sub` del JWT;
+  `CurrentOrganizadorPort` busca el perfil activo del usuario y devuelve su ID independiente.
+- `UsuariosUseCase` implementa el CRUD administrativo y perfil propio. Usa `TransactionPort`
+  para cambios atómicos, con bloqueo del rol ADMIN y del usuario a editar/eliminar.
+  El último ADMIN habilitado no puede perder acceso y las cuentas con datos no pueden borrarse.
 - **Todos** los casos de uso que reciben un id (evento o subtarea) filtran por el
   organizador del token: `findByIdAndOrganizadorId`, `existsByIdAndOrganizadorId`.
 - Los listados (`/api/events`, `/api/today`, `/api/capacity`) ya filtraban por
@@ -118,9 +118,8 @@ Modelo de datos completo en [schema.sql](./schema.sql):
 
 ```
 usuarios 1───0..1 organizadores 1───* eventos 1───* subtareas
-   │ 1                    │ 1
-   │                      └───* capacidades_diarias
-                          └───* organizador_roles *───1 roles
+   │                         └───* capacidades_diarias
+   └───* usuario_roles *───1 roles
 ```
 
 ## Como agregar un caso de uso nuevo
@@ -142,3 +141,11 @@ usuarios 1───0..1 organizadores 1───* eventos 1───* subtareas
 | `app.security.jwt.secret` | `JWT_SECRET` | clave de desarrollo (cambiar en produccion, >= 32 caracteres) |
 | `app.security.jwt.expiration-minutes` | `JWT_EXPIRATION_MINUTES` | `120` |
 | `app.security.jwt.issuer` | - | `events-api` |
+
+## Esquema y transacciones
+
+`docs/schema.sql` crea el modelo para una base nueva; no realiza migraciones. Hibernate usa
+`ddl-auto=validate`. Las FK de eventos y capacidades restringen el borrado del organizador;
+las FK de perfil y asignaciones de roles permiten eliminar una cuenta sin datos de negocio.
+`SpringTransactionAdapter` implementa `TransactionPort` mediante `TransactionTemplate`;
+las capas de aplicación y dominio no dependen de Spring.

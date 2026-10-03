@@ -10,6 +10,10 @@ import com.events.domain.exception.CredencialesInvalidasException;
 import com.events.domain.exception.EventoNotFoundException;
 import com.events.domain.exception.OrganizadorNotFoundException;
 import com.events.domain.exception.SubtareaNotFoundException;
+import com.events.domain.exception.UsuarioNotFoundException;
+import com.events.domain.exception.UsuarioConflictException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import java.time.Instant;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -23,7 +27,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler({EventoNotFoundException.class, SubtareaNotFoundException.class, OrganizadorNotFoundException.class})
+    @ExceptionHandler({EventoNotFoundException.class, SubtareaNotFoundException.class, OrganizadorNotFoundException.class, UsuarioNotFoundException.class})
     ResponseEntity<Map<String, Object>> notFound(RuntimeException exception) {
         return error(HttpStatus.NOT_FOUND, exception.getMessage());
     }
@@ -41,6 +45,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
+    @ExceptionHandler(UsuarioConflictException.class)
+    ResponseEntity<Map<String, Object>> usuarioConflict(UsuarioConflictException exception) {
+        return error(HttpStatus.CONFLICT, exception.getMessage());
+    }
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<Map<String, Object>> forbidden(AccessDeniedException exception) {
+        return error(HttpStatus.FORBIDDEN, "No tienes permisos para acceder a este recurso.");
+    }
+
     @ExceptionHandler(CorreoYaRegistradoException.class)
     ResponseEntity<Map<String, Object>> correoYaRegistrado(CorreoYaRegistradoException exception) {
         return error(HttpStatus.CONFLICT, exception.getMessage());
@@ -56,8 +69,8 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.UNAUTHORIZED, UNAUTHENTICATED);
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    ResponseEntity<Map<String, Object>> invalidArgument(IllegalArgumentException exception) {
+    @ExceptionHandler({IllegalArgumentException.class, MethodArgumentTypeMismatchException.class})
+    ResponseEntity<Map<String, Object>> invalidArgument(RuntimeException exception) {
         return error(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 

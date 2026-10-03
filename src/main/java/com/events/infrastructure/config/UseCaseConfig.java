@@ -47,6 +47,10 @@ import com.events.application.usecase.RegisterUseCase;
 import com.events.application.usecase.UpdateCapacidadUseCase;
 import com.events.application.usecase.UpdateEventoUseCase;
 import com.events.application.usecase.UpdateSubtareaUseCase;
+import com.events.application.port.out.CurrentUsuarioPort;
+import com.events.application.port.out.TransactionPort;
+import com.events.application.port.in.UsuariosPort;
+import com.events.application.usecase.UsuariosUseCase;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -57,8 +61,8 @@ public class UseCaseConfig {
     public RegisterPort registerPort(UsuarioRepositoryPort usuarioRepository,
                                      RolRepositoryPort rolRepository,
                                      PasswordHasherPort passwordHasher,
-                                     TokenProviderPort tokenProvider) {
-        return new RegisterUseCase(usuarioRepository, rolRepository, passwordHasher, tokenProvider);
+                                     TokenProviderPort tokenProvider, TransactionPort transaction) {
+        return new RegisterUseCase(usuarioRepository, rolRepository, passwordHasher, tokenProvider, transaction);
     }
 
     @Bean
@@ -70,8 +74,14 @@ public class UseCaseConfig {
 
     @Bean
     public GetCurrentUserPort getCurrentUserPort(UsuarioRepositoryPort usuarioRepository,
-                                                 CurrentOrganizadorPort currentOrganizador) {
-        return new GetCurrentUserUseCase(usuarioRepository, currentOrganizador);
+                                                 CurrentUsuarioPort currentUsuario) {
+        return new GetCurrentUserUseCase(usuarioRepository, currentUsuario);
+    }
+
+    @Bean
+    public UsuariosPort usuariosPort(UsuarioRepositoryPort usuarios, RolRepositoryPort roles,
+                                    PasswordHasherPort passwords, CurrentUsuarioPort current, TransactionPort transaction) {
+        return new UsuariosUseCase(usuarios, roles, passwords, current, transaction);
     }
 
     @Bean

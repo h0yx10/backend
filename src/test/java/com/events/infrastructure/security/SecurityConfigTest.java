@@ -43,7 +43,8 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @WebMvcTest(controllers = {AuthController.class, EventoController.class, AdminController.class})
 @Import({SecurityConfig.class, RestAuthenticationErrorHandler.class, JwtTokenProviderAdapter.class,
-        SecurityContextCurrentOrganizadorAdapter.class, GlobalExceptionHandler.class,
+        SecurityContextCurrentOrganizadorAdapter.class, SecurityContextCurrentUsuarioAdapter.class,
+        DatabaseJwtAuthenticationConverter.class, GlobalExceptionHandler.class,
         UsuarioRestMapper.class, EventoRestMapper.class, SubtareaRestMapper.class})
 @TestPropertySource(properties = {
         "app.security.jwt.secret=test-secret-test-secret-test-secret-123",
@@ -68,6 +69,12 @@ class SecurityConfigTest {
     @MockBean
     private ListUsuariosPort listUsuariosPort;
     @MockBean
+    private com.events.application.port.in.UsuariosPort usuariosPort;
+    @MockBean
+    private com.events.application.port.out.UsuarioRepositoryPort usuarioRepository;
+    @MockBean
+    private com.events.application.port.out.OrganizadorRepositoryPort organizadorRepository;
+    @MockBean
     private ListEventosPort listEventosPort;
     @MockBean
     private com.events.application.port.in.CreateEventoPort createEventoPort;
@@ -85,12 +92,15 @@ class SecurityConfigTest {
         ReflectionTestUtils.setField(organizador, "id", UUID.randomUUID());
         var perfil = organizador.habilitarComoOrganizador();
         for (NombreRol rol : roles) {
-            perfil.asignarRol(new Rol(rol));
+            organizador.asignarRol(new Rol(rol));
         }
         return organizador;
     }
 
     private String bearer(Usuario organizador) {
+        when(usuarioRepository.findById(organizador.getId())).thenReturn(java.util.Optional.of(organizador));
+        ReflectionTestUtils.setField(organizador.getOrganizador(), "id", UUID.randomUUID());
+        when(organizadorRepository.findByUsuarioId(organizador.getId())).thenReturn(java.util.Optional.of(organizador.getOrganizador()));
         return "Bearer " + tokenProvider.generate(organizador);
     }
 
@@ -114,7 +124,7 @@ class SecurityConfigTest {
         Usuario usuario = usuarioCon(NombreRol.ORGANIZADOR);
         when(listEventosPort.execute()).thenAnswer(invocation -> {
             // El adaptador resuelve el "sub" del JWT como organizador actual.
-            org.assertj.core.api.Assertions.assertThat(currentOrganizador.currentOrganizadorId()).isEqualTo(usuario.getId());
+            org.assertj.core.api.Assertions.assertThat(currentOrganizador.currentOrganizadorId()).isEqualTo(usuario.getOrganizador().getId());
             return List.of();
         });
 
@@ -159,5 +169,25 @@ class SecurityConfigTest {
                         .content("{\"nombre\":\"Camila\",\"correo\":\"no-es-correo\",\"password\":\"Secreta123\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message", containsString("correo")));
+    }
+    @Autowired
+    private org.springframework.security.oauth2.jwt.JwtEncoder jwtEncoder;
+
+    private String signed(String subject, java.time.Instant expires) {
+        var claims = org.springframework.security.oauth2.jwt.JwtClaimsSet.builder()
+                .issuer("events-api").subject(subject).issuedAt(expires.minusSeconds(600)).expiresAt(expires).build();
+        var header = org.springframework.security.oauth2.jwt.JwsHeader
+                .with(org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS256).build();
+        return "Bearer " + jwtEncoder.encode(org.springframework.security.oauth2.jwt.JwtEncoderParameters.from(header, claims)).getTokenValue();
+    }
+    @Test
+    void tokenFirmadoConSubjectInvalidoDevuelve401() throws Exception {
+        mockMvc.perform(get("/api/auth/me").header("Authorization", signed("no-es-uuid", java.time.Instant.now().plusSeconds(600))))
+                .andExpect(status().isUnauthorized());
+    }
+    @Test
+    void tokenExpiradoDevuelve401() throws Exception {
+        mockMvc.perform(get("/api/auth/me").header("Authorization", signed(UUID.randomUUID().toString(), java.time.Instant.now().minusSeconds(120))))
+                .andExpect(status().isUnauthorized());
     }
 }

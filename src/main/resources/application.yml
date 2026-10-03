@@ -26,6 +26,8 @@ spring:
         format_sql: true
         jdbc: { time_zone: America/Bogota }
   jackson:
+    deserialization:
+      fail-on-unknown-properties: true
     time-zone: America/Bogota
 
 springdoc:
@@ -44,7 +46,6 @@ app:
   cors-origin: '${CORS_ORIGIN:http://localhost:4300,https://frontend-pi-olive-30.vercel.app}'
   security:
     jwt:
-      # Clave HS256: minimo 32 caracteres. En produccion SIEMPRE definir JWT_SECRET.
       secret: '${JWT_SECRET:dev-only-secret-change-me-please-32bytes-min!!}'
       expiration-minutes: '${JWT_EXPIRATION_MINUTES:120}'
       issuer: events-api

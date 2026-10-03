@@ -20,13 +20,16 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class RegisterUseCaseTest {
+    static class DirectTransaction implements com.events.application.port.out.TransactionPort {
+        public <T> T execute(java.util.function.Supplier<T> action) { return action.get(); }
+    }
 
     private final UsuarioRepositoryPort usuarioRepository = mock(UsuarioRepositoryPort.class);
     private final RolRepositoryPort rolRepository = mock(RolRepositoryPort.class);
     private final PasswordHasherPort passwordHasher = mock(PasswordHasherPort.class);
     private final TokenProviderPort tokenProvider = mock(TokenProviderPort.class);
     private final RegisterUseCase useCase =
-            new RegisterUseCase(usuarioRepository, rolRepository, passwordHasher, tokenProvider);
+            new RegisterUseCase(usuarioRepository, rolRepository, passwordHasher, tokenProvider, new DirectTransaction());
 
     @Test
     void registraConPasswordHasheadoRolOrganizadorYDevuelveToken() {
@@ -52,14 +55,11 @@ class RegisterUseCaseTest {
     }
 
     @Test
-    void creaElRolOrganizadorSiNoExiste() {
+    void exigeSemillaDeRoles() {
         when(rolRepository.findByNombre(NombreRol.ORGANIZADOR)).thenReturn(Optional.empty());
-        when(rolRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(usuarioRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
-        useCase.execute("Camila", "camila@correo.com", "Secreta123");
-
-        verify(rolRepository).save(any(Rol.class));
+        assertThatThrownBy(() -> useCase.execute("Camila", "camila@correo.com", "Secreta123"))
+                .isInstanceOf(IllegalStateException.class);
+        verify(usuarioRepository, never()).save(any());
     }
 
     @Test

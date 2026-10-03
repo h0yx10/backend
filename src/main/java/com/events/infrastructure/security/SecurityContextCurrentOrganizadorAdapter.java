@@ -1,26 +1,20 @@
 package com.events.infrastructure.security;
 
-import com.events.application.port.out.CurrentOrganizadorPort;
+import com.events.application.port.out.*;
 import java.util.UUID;
-import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
-/**
- * Reemplaza al antiguo organizador demo: el organizador actual es el "sub" del JWT que
- * Spring Security ya valido y dejo en el SecurityContext.
- */
 @Component
 public class SecurityContextCurrentOrganizadorAdapter implements CurrentOrganizadorPort {
-
+    private final CurrentUsuarioPort current;
+    private final OrganizadorRepositoryPort organizadores;
+    public SecurityContextCurrentOrganizadorAdapter(CurrentUsuarioPort current, OrganizadorRepositoryPort organizadores) {
+        this.current = current; this.organizadores = organizadores;
+    }
     @Override
     public UUID currentOrganizadorId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
-            throw new AuthenticationCredentialsNotFoundException("No hay un usuario autenticado.");
-        }
-        return UUID.fromString(jwt.getSubject());
+        return organizadores.findByUsuarioId(current.currentUsuarioId()).filter(o -> o.isActivo())
+                .orElseThrow(() -> new AccessDeniedException("Se requiere un perfil de organizador activo.")).getId();
     }
 }

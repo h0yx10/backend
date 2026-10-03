@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
+import org.springframework.dao.DataIntegrityViolationException;
+import com.events.domain.exception.CorreoYaRegistradoException;
+import com.events.domain.exception.UsuarioConflictException;
 
 @Repository
 public class UsuarioPersistenceAdapter implements UsuarioRepositoryPort {
@@ -19,7 +22,13 @@ public class UsuarioPersistenceAdapter implements UsuarioRepositoryPort {
 
     @Override
     public Usuario save(Usuario usuario) {
-        return jpaUsuarioRepository.save(usuario);
+        try {
+            return jpaUsuarioRepository.saveAndFlush(usuario);
+        } catch (DataIntegrityViolationException ex) {
+            if (sqlState(ex, "23505"))
+                throw new CorreoYaRegistradoException("Ya existe una cuenta con ese correo.");
+            throw ex;
+        }
     }
 
     @Override
@@ -29,16 +38,39 @@ public class UsuarioPersistenceAdapter implements UsuarioRepositoryPort {
 
     @Override
     public Optional<Usuario> findByCorreo(String correo) {
-        return jpaUsuarioRepository.findByCorreo(correo);
+        return jpaUsuarioRepository.findByCorreoIgnoreCase(correo);
     }
 
     @Override
     public boolean existsByCorreo(String correo) {
-        return jpaUsuarioRepository.existsByCorreo(correo);
+        return jpaUsuarioRepository.existsByCorreoIgnoreCase(correo);
     }
 
     @Override
     public List<Usuario> findAll() {
         return jpaUsuarioRepository.findAll();
+    }
+    @Override
+    public Optional<Usuario> findByIdForUpdate(UUID id) { return jpaUsuarioRepository.findByIdForUpdate(id); }
+    @Override
+    public long countActiveAdmins() { return jpaUsuarioRepository.countActiveAdmins(); }
+    @Override
+    public boolean hasBusinessData(UUID id) { return jpaUsuarioRepository.hasBusinessData(id); }
+    @Override
+    public void delete(Usuario usuario) {
+        try {
+            jpaUsuarioRepository.delete(usuario);
+            jpaUsuarioRepository.flush();
+        } catch (DataIntegrityViolationException ex) {
+            if (sqlState(ex, "23503"))
+                throw new UsuarioConflictException("No se puede eliminar un usuario con datos asociados.");
+            throw ex;
+        }
+    }
+    private static boolean sqlState(Throwable ex, String state) {
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            if (cause instanceof java.sql.SQLException sql && state.equals(sql.getSQLState())) return true;
+        }
+        return false;
     }
 }

@@ -6,6 +6,10 @@ import static com.events.infrastructure.utils.constants.MessageConstants.REGISTE
 
 import com.events.application.port.in.GetCurrentUserPort;
 import com.events.application.port.in.LoginPort;
+import com.events.application.port.in.UsuariosPort;
+import com.events.infrastructure.adapter.in.rest.dto.UpdatePerfilRequest;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import com.events.application.port.in.RegisterPort;
 import com.events.infrastructure.adapter.in.rest.dto.ApiResponse;
 import com.events.infrastructure.adapter.in.rest.dto.AuthResponse;
@@ -36,6 +40,7 @@ public class AuthController {
     private final LoginPort loginUseCase;
     private final GetCurrentUserPort getCurrentUserUseCase;
     private final UsuarioRestMapper mapper;
+    private final UsuariosPort usuarios;
 
     @PostMapping("/register")
     @SecurityRequirements
@@ -57,5 +62,17 @@ public class AuthController {
     @Operation(summary = "Usuario actual", description = "Devuelve el usuario dueno del token enviado.")
     public ApiResponse<UsuarioResponse> me() {
         return ApiResponse.ok(CURRENT_USER_RETRIEVED, mapper.toResponse(getCurrentUserUseCase.execute()));
+    }
+    @PatchMapping("/me")
+    @Operation(summary = "Editar perfil propio", description = "Cambiar password exige passwordActual. No permite roles ni activo.")
+    public ApiResponse<UsuarioResponse> updateMe(@Valid @RequestBody UpdatePerfilRequest body) {
+        return ApiResponse.ok("Perfil actualizado correctamente.", mapper.toResponse(usuarios.updateCurrent(
+                body.nombre(), body.correo(), body.password(), body.passwordActual())));
+    }
+    @DeleteMapping("/me")
+    @Operation(summary = "Eliminar cuenta propia", description = "409 si tiene datos de negocio o es el ultimo ADMIN habilitado.")
+    public ApiResponse<Void> deleteMe() {
+        usuarios.deleteCurrent();
+        return ApiResponse.ok("Cuenta eliminada correctamente.", null);
     }
 }

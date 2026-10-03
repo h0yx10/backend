@@ -17,6 +17,11 @@ public class RolPersistenceAdapter implements RolRepositoryPort {
     }
 
     @Override
+    public void lockAdminGuard() {
+        jpaRolRepository.lockAdminGuard().orElseThrow(() -> new IllegalStateException("Falta la semilla ADMIN."));
+    }
+
+    @Override
     public Optional<Rol> findByNombre(NombreRol nombre) {
         return jpaRolRepository.findByNombre(nombre);
     }

@@ -14,6 +14,7 @@ public class UsuarioRestMapper {
     public UsuarioResponse toResponse(Usuario usuario) {
         return new UsuarioResponse(
                 usuario.getId(),
+                usuario.getOrganizador() == null ? null : usuario.getOrganizador().getId(),
                 usuario.getNombre(),
                 usuario.getCorreo(),
                 usuario.getRoles().stream().map(rol -> rol.getNombre().name()).sorted().toList(),
