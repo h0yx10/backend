@@ -27,7 +27,7 @@ public class UpdateSubtareaUseCase implements UpdateSubtareaPort {
     }
 
     @Override
-    public Subtarea execute(UUID subtareaId, String nombre, LocalDate fechaObjetivo, BigDecimal horasEstimadas) {
+    public Subtarea execute(UUID subtareaId, String nombre, String descripcion, LocalDate fechaObjetivo, BigDecimal horasEstimadas) {
         Subtarea subtarea = subtareaRepository.findByIdAndOrganizadorId(subtareaId, currentOrganizador.currentOrganizadorId())
                 .orElseThrow(() -> new SubtareaNotFoundException("No encontramos la subtarea solicitada."));
 
@@ -48,7 +48,7 @@ public class UpdateSubtareaUseCase implements UpdateSubtareaPort {
             }
         }
 
-        subtarea.actualizar(nombre, fechaObjetivo, horasEstimadas);
+        subtarea.actualizar(nombre, descripcion, fechaObjetivo, horasEstimadas);
         return subtareaRepository.save(subtarea);
     }
 }

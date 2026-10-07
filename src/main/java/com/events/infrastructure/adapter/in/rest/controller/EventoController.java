@@ -70,7 +70,7 @@ public class EventoController {
         List<NuevaSubtareaData> subtareas = request.subtareas() == null
                 ? List.of()
                 : request.subtareas().stream()
-                        .map(s -> new NuevaSubtareaData(s.nombre(), s.fechaObjetivo(), s.horasEstimadas()))
+                        .map(s -> new NuevaSubtareaData(s.name(), s.description(), s.targetDate(), s.estimatedHours()))
                         .toList();
 
         var evento = createEventoUseCase.execute(

@@ -8,12 +8,13 @@ import java.util.UUID;
 
 public record SubtareaResponse(
         UUID id,
-        UUID eventoId,
-        String nombre,
-        LocalDate fechaObjetivo,
-        BigDecimal horasEstimadas,
-        EstadoSubtarea estado,
-        String nota,
+        UUID eventId,
+        String name,
+        String description,
+        LocalDate targetDate,
+        BigDecimal estimatedHours,
+        EstadoSubtarea status,
+        String note,
         LocalDateTime doneAt,
         LocalDateTime createdAt
 ) {

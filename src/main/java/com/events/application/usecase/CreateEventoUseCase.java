@@ -37,7 +37,7 @@ public class CreateEventoUseCase implements CreateEventoPort {
 
         if (subtareasIniciales != null) {
             for (NuevaSubtareaData data : subtareasIniciales) {
-                evento.agregarSubtarea(new Subtarea(data.nombre(), data.fechaObjetivo(), data.horasEstimadas()));
+                evento.agregarSubtarea(new Subtarea(data.nombre(), data.descripcion(), data.fechaObjetivo(), data.horasEstimadas()));
             }
         }
 

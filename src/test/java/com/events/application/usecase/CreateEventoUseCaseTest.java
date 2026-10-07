@@ -35,11 +35,12 @@ class CreateEventoUseCaseTest {
         when(organizadorRepository.findById(organizadorId)).thenReturn(Optional.of(new Organizador(new Usuario("Demo", "demo@x.com", "hash"))));
         when(eventoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var subtareas = List.of(new NuevaSubtareaData("Reservar salon", LocalDate.now().plusDays(1), BigDecimal.valueOf(2)));
+        var subtareas = List.of(new NuevaSubtareaData("Reservar salon", "Confirmar aforo", LocalDate.now().plusDays(1), BigDecimal.valueOf(2)));
         var evento = useCase.execute("Boda", "Social", "Cliente", null, LocalDateTime.now().plusDays(10), "Salon", null, subtareas);
 
         assertThat(evento.getNombre()).isEqualTo("Boda");
         assertThat(evento.getSubtareas()).hasSize(1);
+        assertThat(evento.getSubtareas().get(0).getDescripcion()).isEqualTo("Confirmar aforo");
         assertThat(evento.getSubtareas().get(0).getNombre()).isEqualTo("Reservar salon");
     }
 

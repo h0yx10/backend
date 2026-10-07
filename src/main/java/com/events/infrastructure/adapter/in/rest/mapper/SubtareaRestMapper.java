@@ -12,6 +12,7 @@ public class SubtareaRestMapper {
                 subtarea.getId(),
                 subtarea.getEvento().getId(),
                 subtarea.getNombre(),
+                subtarea.getDescripcion(),
                 subtarea.getFechaObjetivo(),
                 subtarea.getHorasEstimadas(),
                 subtarea.getEstado(),
