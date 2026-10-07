@@ -53,9 +53,10 @@ Gestion de eventos y su plan de trabajo logistico (US-01, US-03).
 
 | Campo | Tipo | Requerido | Validacion |
 |---|---|---|---|
-| `nombre` | string | si | no vacio |
-| `fechaObjetivo` | date ISO `yyyy-MM-dd` | si | - |
-| `horasEstimadas` | number (decimal) | si | > 0 |
+| `name` | string | si | no vacio |
+| `description` | string | no | maximo 255 caracteres |
+| `targetDate` | date ISO `yyyy-MM-dd` | si | - |
+| `estimatedHours` | number (decimal) | si | > 0 |
 
 **Response 201** - `data`: `EventoResponse`.
 

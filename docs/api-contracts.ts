@@ -79,9 +79,10 @@ export interface UpdateUsuarioRequest extends UpdatePerfilRequest {
 
 // ---------- Eventos ----------
 export interface SubtareaInicialRequest {
-  nombre: string;          // requerido
-  fechaObjetivo: DateISO;  // requerido
-  horasEstimadas: number;  // requerido, > 0
+  description?: string;   // opcional, máximo 255 caracteres; alias de entrada: descripcion
+  name: string;          // requerido
+  targetDate: DateISO;  // requerido
+  estimatedHours: number;  // requerido, > 0
 }
 
 export interface CreateEventoRequest {
@@ -127,38 +128,41 @@ export interface ProgressResponse {
 
 // ---------- Subtareas ----------
 export interface CreateSubtareaRequest {
-  nombre: string;              // requerido
-  fechaObjetivo: DateISO;      // requerido
-  horasEstimadas: number;      // requerido, > 0
+  description?: string;   // opcional, máximo 255 caracteres; alias de entrada: descripcion
+  name: string;              // requerido
+  targetDate: DateISO;      // requerido
+  estimatedHours: number;      // requerido, > 0
 }
 
 export interface UpdateSubtareaRequest {   // PATCH parcial
-  nombre?: string;
-  fechaObjetivo?: DateISO;          // si cambia fecha u horas se valida sobrecarga (409)
-  horasEstimadas?: number;          // > 0
+  description?: string; // maximo 255; omitido/null conserva el valor; "" lo vacía
+  name?: string;
+  targetDate?: DateISO;          // si cambia targetDate o estimatedHours se valida sobrecarga (409)
+  estimatedHours?: number;          // > 0
 }
 
 export interface ChangeSubtareaStatusRequest {
-  estado: EstadoSubtarea;           // requerido
-  nota?: string;                    // opcional (tipicamente al posponer)
+  status: EstadoSubtarea;           // requerido
+  note?: string;                    // opcional (tipicamente al posponer)
 }
 
 export interface SubtareaResponse {
   id: UUID;
-  eventoId: UUID;
-  nombre: string;
-  fechaObjetivo: DateISO;
-  horasEstimadas: number;
-  estado: EstadoSubtarea;
-  nota: string | null;
+  eventId: UUID;
+  description: string | null;
+  name: string;
+  targetDate: DateISO;
+  estimatedHours: number;
+  status: EstadoSubtarea;
+  note: string | null;
   doneAt: DateTimeISO | null;
   createdAt: DateTimeISO;
 }
 
 // ---------- Conflictos ----------
 export interface OverloadCheckRequest {
-  fechaObjetivo?: DateISO;    // si se omite, usa la actual de la subtarea
-  horasEstimadas?: number;    // si se omite, usa las actuales
+  targetDate?: DateISO;    // si se omite, usa la actual de la subtarea
+  estimatedHours?: number;    // si se omite, usa las actuales
 }
 
 export interface OverloadCheckResponse {
@@ -194,3 +198,16 @@ export interface TodayQuery {
 
 /** POST /api/auth/logout: Bearer obligatorio, sin body. */
 export type LogoutResponse = ApiResponse<null>;
+
+/** Payload en inglés aceptado por POST /api/events/{eventId}/subtasks.
+ * La respuesta usa eventId/name/description/targetDate/estimatedHours/status/note/doneAt/createdAt/id.
+ */
+export interface SubtaskPayload {
+  name: string;
+  description?: string;
+  targetDate: DateISO;
+  estimatedHours: number;
+}
+
+/** Campos opcionales en PATCH /api/subtasks/{id}; acepta los mismos alias que CREATE. */
+export type UpdateSubtaskPayload = Partial<SubtaskPayload>;

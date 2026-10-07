@@ -53,4 +53,14 @@ class CreateSubtareaUseCaseTest {
         assertThatThrownBy(() -> useCase.execute(eventoId, "Tarea", LocalDate.now(), BigDecimal.ONE))
                 .isInstanceOf(EventoNotFoundException.class);
     }
+    @Test
+    void transmiteDescripcionAlRepositorio() {
+        UUID eventoId = UUID.randomUUID();
+        Evento evento = new Evento("Boda", "Social", null, null, null, null, null,
+                new Organizador(new Usuario("Camila", "camila@correo.com", "hash")));
+        when(eventoRepository.findByIdAndOrganizadorId(eventoId, ORGANIZADOR_ID)).thenReturn(Optional.of(evento));
+        when(subtareaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        var subtarea = useCase.execute(eventoId, "Catering", "Confirmar menu", LocalDate.now(), BigDecimal.ONE);
+        assertThat(subtarea.getDescripcion()).isEqualTo("Confirmar menu");
+    }
 }

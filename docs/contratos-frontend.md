@@ -148,9 +148,10 @@ interface UpdateUsuarioRequest extends UpdatePerfilRequest {
 
 // ---------- Eventos ----------
 interface SubtareaInicialRequest {
-  nombre: string;          // requerido
-  fechaObjetivo: DateISO;  // requerido
-  horasEstimadas: number;  // requerido, > 0
+  description?: string;   // opcional, máximo 255 caracteres; alias de entrada: descripcion
+  name: string;          // requerido
+  targetDate: DateISO;  // requerido
+  estimatedHours: number;  // requerido, > 0
 }
 
 interface CreateEventoRequest {
@@ -196,38 +197,41 @@ interface ProgressResponse {
 
 // ---------- Subtareas ----------
 interface CreateSubtareaRequest {
-  nombre: string;              // requerido
-  fechaObjetivo: DateISO;      // requerido
-  horasEstimadas: number;      // requerido, > 0
+  description?: string;   // opcional, máximo 255 caracteres; alias de entrada: descripcion
+  name: string;              // requerido
+  targetDate: DateISO;      // requerido
+  estimatedHours: number;      // requerido, > 0
 }
 
 interface UpdateSubtareaRequest {   // PATCH parcial
-  nombre?: string;
-  fechaObjetivo?: DateISO;          // si cambia fecha u horas se valida sobrecarga (409)
-  horasEstimadas?: number;          // > 0
+  description?: string; // maximo 255; omitido/null conserva el valor; "" lo vacía
+  name?: string;
+  targetDate?: DateISO;          // si cambia targetDate o estimatedHours se valida sobrecarga (409)
+  estimatedHours?: number;          // > 0
 }
 
 interface ChangeSubtareaStatusRequest {
-  estado: EstadoSubtarea;           // requerido
-  nota?: string;                    // opcional (tipicamente al posponer)
+  status: EstadoSubtarea;           // requerido
+  note?: string;                    // opcional (tipicamente al posponer)
 }
 
 interface SubtareaResponse {
   id: UUID;
-  eventoId: UUID;
-  nombre: string;
-  fechaObjetivo: DateISO;
-  horasEstimadas: number;
-  estado: EstadoSubtarea;
-  nota: string | null;
+  eventId: UUID;
+  description: string | null;
+  name: string;
+  targetDate: DateISO;
+  estimatedHours: number;
+  status: EstadoSubtarea;
+  note: string | null;
   doneAt: DateTimeISO | null;
   createdAt: DateTimeISO;
 }
 
 // ---------- Conflictos ----------
 interface OverloadCheckRequest {
-  fechaObjetivo?: DateISO;    // si se omite, usa la actual de la subtarea
-  horasEstimadas?: number;    // si se omite, usa las actuales
+  targetDate?: DateISO;    // si se omite, usa la actual de la subtarea
+  estimatedHours?: number;    // si se omite, usa las actuales
 }
 
 interface OverloadCheckResponse {
@@ -396,7 +400,7 @@ Content-Type: application/json
   "fechaHora": "2026-12-20T18:00:00",
   "lugar": "Club Campestre",
   "subtareas": [
-    { "nombre": "Reservar salon", "fechaObjetivo": "2026-11-10", "horasEstimadas": 3 }
+    { "name": "Reservar salon", "targetDate": "2026-11-10", "estimatedHours": 3 }
   ]
 }
 ```
@@ -519,3 +523,34 @@ desactivado ni perder su rol.
 - Estado: PENDING, DONE o POSTPONED. Vista Hoy excluye DONE, incluso usando status=DONE.
 - No enviar organizadorId ni usuarioId al crear eventos o capacidades: el backend
   resuelve la pertenencia desde la cuenta autenticada. No enviar campos desconocidos.
+
+## Descripción de subtareas y payload del cliente
+
+`POST /api/events/{eventId}/subtasks` usa `name`, `description`, `targetDate` y
+`estimatedHours`. Los nombres españoles solo son alias de compatibilidad de entrada.
+Usar una sola variante por campo. `description` es opcional, admite null y tiene un máximo
+de 255 caracteres. Se guarda en `subtareas.descripcion` y se devuelve como `description`
+en las respuestas de subtarea; todos sus campos son en inglés: eventId, name, description,
+targetDate, estimatedHours, status, note, doneAt y createdAt, además de id.
+Se admite igualmente description en las subtareas iniciales de POST /api/events.
+PATCH /api/subtasks/{id} permite editar description (o descripcion). Omitirla o enviarla
+como null conserva la descripción anterior; enviar "" la vacía. Usa name, targetDate y estimatedHours
+para los otros campos editables, con los nombres españoles como alias de entrada.
+
+```ts
+interface SubtaskPayload {
+  name: string;
+  description?: string;
+  targetDate: string;
+  estimatedHours: number;
+}
+```
+
+```json
+{
+  "name": "Confirmar catering",
+  "description": "Confirmar menu vegetariano con el proveedor",
+  "targetDate": "2026-10-10",
+  "estimatedHours": 2
+}
+```

@@ -28,6 +28,9 @@ public class Subtarea {
     @Column(nullable = false, length = 180)
     private String nombre;
 
+    @Column(name = "descripcion", length = 255)
+    private String descripcion;
+
     @Column(name = "fecha_objetivo", nullable = false)
     private LocalDate fechaObjetivo;
 
@@ -55,7 +58,15 @@ public class Subtarea {
     }
 
     public Subtarea(String nombre, LocalDate fechaObjetivo, BigDecimal horasEstimadas) {
+        this(nombre, null, fechaObjetivo, horasEstimadas);
+    }
+
+    public Subtarea(String nombre, String descripcion, LocalDate fechaObjetivo, BigDecimal horasEstimadas) {
         requireHorasPositivas(horasEstimadas);
+        if (descripcion != null && descripcion.length() > 255) {
+            throw new IllegalArgumentException("La descripcion puede tener maximo 255 caracteres.");
+        }
+        this.descripcion = descripcion;
         this.nombre = nombre;
         this.fechaObjetivo = fechaObjetivo;
         this.horasEstimadas = horasEstimadas;
@@ -72,12 +83,22 @@ public class Subtarea {
     }
 
     public void actualizar(String nombre, LocalDate fechaObjetivo, BigDecimal horasEstimadas) {
+        actualizar(nombre, null, fechaObjetivo, horasEstimadas);
+    }
+
+    public void actualizar(String nombre, String descripcion, LocalDate fechaObjetivo, BigDecimal horasEstimadas) {
+        if (descripcion != null && descripcion.length() > 255) {
+            throw new IllegalArgumentException("La descripcion puede tener maximo 255 caracteres.");
+        }
         if (horasEstimadas != null) {
             requireHorasPositivas(horasEstimadas);
             this.horasEstimadas = horasEstimadas;
         }
         if (nombre != null) {
             this.nombre = nombre;
+        }
+        if (descripcion != null) {
+            this.descripcion = descripcion;
         }
         if (fechaObjetivo != null) {
             this.fechaObjetivo = fechaObjetivo;
@@ -116,6 +137,10 @@ public class Subtarea {
 
     public String getNombre() {
         return nombre;
+    }
+
+    public String getDescripcion() {
+        return descripcion;
     }
 
     public LocalDate getFechaObjetivo() {

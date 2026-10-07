@@ -28,7 +28,7 @@ public class ConflictController {
             description = "Calcula si reprogramar la subtarea a la fecha/horas indicadas superaria el limite diario, sin guardar el cambio."
     )
     public ApiResponse<OverloadCheckResponse> check(@PathVariable UUID id, @RequestBody OverloadCheckRequest request) {
-        var result = checkOverloadConflictUseCase.execute(id, request.fechaObjetivo(), request.horasEstimadas());
+        var result = checkOverloadConflictUseCase.execute(id, request.targetDate(), request.estimatedHours());
         return ApiResponse.ok(OVERLOAD_CHECK_RETRIEVED,
                 new OverloadCheckResponse(result.conflict(), result.plannedHours(), result.limitHours(), result.exceedsBy()));
     }

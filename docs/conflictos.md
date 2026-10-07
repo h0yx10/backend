@@ -20,8 +20,8 @@ el cliente muestre una advertencia antes de confirmar un `PATCH /api/subtasks/{i
 
 | Campo | Tipo |
 |---|---|
-| `fechaObjetivo` | date ISO `yyyy-MM-dd` |
-| `horasEstimadas` | number (decimal) |
+| `targetDate` | date ISO `yyyy-MM-dd` |
+| `estimatedHours` | number (decimal) |
 
 **Response 200** - `data`: `OverloadCheckResponse`.
 

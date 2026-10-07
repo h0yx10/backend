@@ -69,7 +69,7 @@ class UpdateSubtareaUseCaseTest {
         when(subtareaRepository.sumHorasPlanificadas(any(), any(), any())).thenReturn(BigDecimal.valueOf(5));
 
         LocalDate nuevaFecha = LocalDate.now().plusDays(1);
-        assertThatThrownBy(() -> useCase.execute(null, null, nuevaFecha, BigDecimal.valueOf(2)))
+        assertThatThrownBy(() -> useCase.execute(null, null, "No guardar", nuevaFecha, BigDecimal.valueOf(2)))
                 .isInstanceOf(CapacityConflictException.class)
                 .satisfies(ex -> {
                     CapacityConflictException conflict = (CapacityConflictException) ex;
@@ -79,6 +79,7 @@ class UpdateSubtareaUseCaseTest {
                 });
 
         verify(subtareaRepository, never()).save(any());
+        assertThat(subtarea.getDescripcion()).isNull();
     }
 
     @Test
@@ -105,5 +106,39 @@ class UpdateSubtareaUseCaseTest {
 
         verify(capacidadDiariaRepository, never()).findCurrentByOrganizadorId(any());
         verify(subtareaRepository).save(subtarea);
+    }
+    @Test
+    void editaSoloDescripcionSinRecalcularCarga() {
+        Subtarea subtarea = subtareaConEvento();
+        var fecha = subtarea.getFechaObjetivo();
+        when(subtareaRepository.findByIdAndOrganizadorId(any(), any())).thenReturn(Optional.of(subtarea));
+        when(subtareaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        var resultado = useCase.execute(null, null, "Menu actualizado", null, null);
+        assertThat(resultado.getDescripcion()).isEqualTo("Menu actualizado");
+        assertThat(resultado.getFechaObjetivo()).isEqualTo(fecha);
+        assertThat(resultado.getHorasEstimadas()).isEqualByComparingTo("2");
+        verify(capacidadDiariaRepository, never()).findCurrentByOrganizadorId(any());
+        verify(subtareaRepository, never()).sumHorasPlanificadas(any(), any(), any());
+    }
+    @Test
+    void conservaDescripcionSiNoSeEnviaYPermiteVaciarla() {
+        Subtarea subtarea = subtareaConEvento();
+        subtarea.actualizar(null, "Anterior", null, null);
+        when(subtareaRepository.findByIdAndOrganizadorId(any(), any())).thenReturn(Optional.of(subtarea));
+        when(subtareaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        useCase.execute(null, "Otro nombre", null, null);
+        assertThat(subtarea.getDescripcion()).isEqualTo("Anterior");
+        useCase.execute(null, null, "", null, null);
+        assertThat(subtarea.getDescripcion()).isEmpty();
+    }
+    @Test
+    void rechazaDescripcionDemasiadoLargaSinGuardarNiModificar() {
+        Subtarea subtarea = subtareaConEvento();
+        when(subtareaRepository.findByIdAndOrganizadorId(any(), any())).thenReturn(Optional.of(subtarea));
+        assertThatThrownBy(() -> useCase.execute(null, "Otro nombre", "a".repeat(256), null, null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(subtarea.getNombre()).isEqualTo("Reservar salon");
+        assertThat(subtarea.getDescripcion()).isNull();
+        verify(subtareaRepository, never()).save(any());
     }
 }

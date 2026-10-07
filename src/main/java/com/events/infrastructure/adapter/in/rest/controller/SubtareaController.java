@@ -52,7 +52,7 @@ public class SubtareaController {
             @PathVariable UUID eventId,
             @Valid @RequestBody CreateSubtareaRequest request
     ) {
-        var subtarea = createSubtareaUseCase.execute(eventId, request.nombre(), request.fechaObjetivo(), request.horasEstimadas());
+        var subtarea = createSubtareaUseCase.execute(eventId, request.name(), request.description(), request.targetDate(), request.estimatedHours());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(SUBTAREA_CREATED, mapper.toResponse(subtarea)));
     }
 
@@ -66,18 +66,18 @@ public class SubtareaController {
     @PatchMapping("/api/subtasks/{id}")
     @Operation(
             summary = "Editar o reprogramar una subtarea",
-            description = "Actualiza los campos enviados. Cambiar fechaObjetivo y/o horasEstimadas valida "
+            description = "Actualiza los campos enviados. Cambiar targetDate y/o estimatedHours valida "
                     + "sobrecarga diaria (US-06, US-07) y devuelve 409 si se supera el limite."
     )
     public ApiResponse<SubtareaResponse> update(@PathVariable UUID id, @Valid @RequestBody UpdateSubtareaRequest request) {
-        var subtarea = updateSubtareaUseCase.execute(id, request.nombre(), request.fechaObjetivo(), request.horasEstimadas());
+        var subtarea = updateSubtareaUseCase.execute(id, request.name(), request.description(), request.targetDate(), request.estimatedHours());
         return ApiResponse.ok(SUBTAREA_UPDATED, mapper.toResponse(subtarea));
     }
 
     @PatchMapping("/api/subtasks/{id}/status")
     @Operation(summary = "Registrar ejecucion", description = "Marca una subtarea como hecha o pospuesta, con nota opcional (US-09).")
     public ApiResponse<SubtareaResponse> changeStatus(@PathVariable UUID id, @Valid @RequestBody ChangeSubtareaStatusRequest request) {
-        var subtarea = changeSubtareaStatusUseCase.execute(id, request.estado(), request.nota());
+        var subtarea = changeSubtareaStatusUseCase.execute(id, request.status(), request.note());
         return ApiResponse.ok(SUBTAREA_STATUS_UPDATED, mapper.toResponse(subtarea));
     }
 
